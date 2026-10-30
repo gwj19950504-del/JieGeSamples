@@ -1,0 +1,2851 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>寄样信息转换</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f5ef;
+      --panel: #ffffff;
+      --ink: #1f2a28;
+      --muted: #66736f;
+      --line: #d9ddd4;
+      --accent: #0c7b73;
+      --accent-strong: #075f58;
+      --warning: #b25b18;
+      --soft: #e7f1ee;
+      --shadow: 0 18px 40px rgba(31, 42, 40, .09);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(12, 123, 115, .12), transparent 34%),
+        linear-gradient(315deg, rgba(242, 171, 84, .16), transparent 38%),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    textarea,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 34px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) auto auto;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .tool-tabs {
+      display: inline-flex;
+      gap: 4px;
+      margin: 0;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .75);
+    }
+
+    .tool-tab {
+      min-width: 112px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .tool-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .tool-view {
+      display: none;
+    }
+
+    .tool-view.active {
+      display: block;
+    }
+
+    .today {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 6px 10px;
+      align-items: center;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, .72);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 190px;
+    }
+
+    .today span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .today strong {
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    section {
+      background: rgba(255, 255, 255, .86);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .7);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .single-action {
+      width: min(220px, 100%);
+    }
+
+    .single-action .primary {
+      width: 100%;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+    }
+
+    .inline-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(90px, 1fr));
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    input,
+    select {
+      height: 38px;
+      padding: 0 10px;
+    }
+
+    textarea {
+      display: block;
+      min-height: 500px;
+      resize: vertical;
+      padding: 16px;
+      line-height: 1.7;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    textarea:focus,
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(12, 123, 115, .14);
+    }
+
+    textarea:focus {
+      box-shadow: inset 0 0 0 2px rgba(12, 123, 115, .2);
+    }
+
+    button {
+      height: 38px;
+      min-width: 38px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: var(--soft);
+      color: var(--ink);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 12px;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(12, 123, 115, .28);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .ghost {
+      background: transparent;
+      border-color: var(--line);
+    }
+
+    .clear-action {
+      min-width: 136px;
+      border-color: #c9704c;
+      background: #fff4ec;
+      color: #9a3f1e;
+      font-weight: 700;
+    }
+
+    .clear-action:hover {
+      border-color: #b84b25;
+      background: #ffe8d8;
+    }
+
+    .output-wrap {
+      position: relative;
+    }
+
+    #output {
+      white-space: pre-wrap;
+    }
+
+    .status {
+      min-height: 42px;
+      padding: 11px 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .status.warn {
+      color: var(--warning);
+      background: #fff8f0;
+    }
+
+    .mapping {
+      margin-top: 18px;
+      padding: 16px;
+    }
+
+    .art-fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .art-fields .wide {
+      grid-column: span 2;
+    }
+
+    .art-preview {
+      min-height: 590px;
+    }
+
+    .art-note {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .batch-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .product-list {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+    }
+
+    .product-row {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.2fr) minmax(130px, 1fr) minmax(90px, .7fr) 38px;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .72);
+    }
+
+    .remove-row {
+      width: 38px;
+      padding: 0;
+      border-color: #dfb5a3;
+      background: #fff4ec;
+      color: #9a3f1e;
+      font-size: 20px;
+    }
+
+    .add-row {
+      margin: 0 16px 16px;
+      width: calc(100% - 32px);
+      border-color: var(--line);
+      background: var(--soft);
+      color: var(--accent-strong);
+      font-weight: 700;
+    }
+
+    .batch-preview {
+      min-height: 590px;
+    }
+
+    .mapping-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .map-item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      background: rgba(255, 255, 255, .7);
+    }
+
+    .map-item b {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .map-item span {
+      color: var(--muted);
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    @media (max-width: 860px) {
+      header {
+        grid-template-columns: 1fr auto;
+        align-items: end;
+      }
+
+      header .tool-tabs {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+      .today {
+        min-width: 0;
+      }
+
+      .inline-fields,
+      .art-fields,
+      .batch-controls,
+      .mapping-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      textarea {
+        min-height: 340px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .app {
+        width: min(100vw - 20px, 1180px);
+        padding-top: 18px;
+      }
+
+      .section-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .toolbar,
+      .toolbar button {
+        width: 100%;
+      }
+
+      .inline-fields,
+      .art-fields,
+      .batch-controls,
+      .mapping-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .art-fields .wide {
+        grid-column: auto;
+      }
+
+      .tool-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        width: 100%;
+      }
+
+      .tool-tab {
+        min-width: 0;
+      }
+
+      .product-row {
+        grid-template-columns: 1fr;
+      }
+
+      .remove-row {
+        width: 100%;
+      }
+    }
+
+    /* Apple desktop preview */
+    :root {
+      --bg: #f5f5f7;
+      --panel: #ffffff;
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --line: #d2d2d7;
+      --accent: #007aff;
+      --accent-strong: #0066d6;
+      --warning: #ff9500;
+      --soft: #f2f2f7;
+      --danger: #ff3b30;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .05);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      width: min(1440px, calc(100vw - 48px));
+      padding: 22px 0 32px;
+    }
+
+    header {
+      grid-template-columns: minmax(250px, 1fr) auto 210px;
+      gap: 20px;
+      min-height: 76px;
+      margin-bottom: 18px;
+      padding: 12px 14px 12px 18px;
+      border: 1px solid rgba(0, 0, 0, .06);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .88);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+      backdrop-filter: saturate(180%) blur(18px);
+      -webkit-backdrop-filter: saturate(180%) blur(18px);
+    }
+
+    h1 {
+      font-size: 30px;
+      line-height: 1.1;
+      font-weight: 720;
+    }
+
+    .sub {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .tool-tabs {
+      gap: 2px;
+      padding: 3px;
+      border: 0;
+      border-radius: 8px;
+      background: #e9e9ee;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .035);
+    }
+
+    .tool-tab {
+      min-width: 128px;
+      height: 40px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #5c5c61;
+      font-size: 14px;
+      font-weight: 550;
+      transition: color .18s ease, background-color .18s ease, box-shadow .18s ease;
+    }
+
+    .tool-tab:hover {
+      transform: none;
+      border-color: transparent;
+      background: rgba(255, 255, 255, .48);
+    }
+
+    .tool-tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 1px 3px rgba(0, 82, 204, .22);
+    }
+
+    .today {
+      min-width: 0;
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--soft);
+      box-shadow: none;
+    }
+
+    .today span {
+      font-size: 12px;
+    }
+
+    .today strong {
+      color: var(--ink);
+      font-size: 17px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .grid {
+      gap: 16px;
+    }
+
+    section {
+      border: 1px solid rgba(0, 0, 0, .075);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .section-head {
+      min-height: 66px;
+      padding: 11px 16px 11px 18px;
+      border-bottom-color: rgba(0, 0, 0, .08);
+      background: #fff;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 680;
+    }
+
+    .single-action {
+      width: min(260px, 42%);
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 550;
+    }
+
+    .inline-fields {
+      grid-template-columns: minmax(100px, 1fr) minmax(70px, .7fr) minmax(298px, 1.8fr);
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom-color: rgba(0, 0, 0, .08);
+      background: #fbfbfd;
+    }
+
+    .sample-number-options {
+      display: grid;
+      grid-template-columns: repeat(6, 38px);
+      gap: 14px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: start;
+    }
+
+    .sample-number-option {
+      position: relative;
+      display: block;
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+    }
+
+    .sample-number-option input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sample-number-option span {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 2px solid rgba(26, 28, 31, .10);
+      border-radius: 8px;
+      background: var(--swatch);
+      color: var(--swatch-text, #fff);
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+      transition: transform .16s ease, box-shadow .16s ease, outline-color .16s ease;
+    }
+
+    .sample-number-option input:checked + span {
+      outline: 2px solid #1a1c1f;
+      outline-offset: 2px;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 12px rgba(26, 28, 31, .18), inset 0 0 0 1px rgba(255, 255, 255, .22);
+    }
+
+    .sample-number-option input:focus-visible + span {
+      outline: 3px solid rgba(0, 122, 255, .38);
+      outline-offset: 2px;
+    }
+
+    .copy-actions {
+      display: grid;
+      grid-template-columns: 92px minmax(150px, 1fr);
+      width: min(360px, 55%);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .label-settings {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, .08);
+      background: #fbfbfd;
+    }
+
+    .label-settings label,
+    .label-toggle:not([hidden]) {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      color: var(--ink);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .label-settings input,
+    .label-toggle input {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+      margin: 0;
+      padding: 0;
+      accent-color: var(--accent);
+    }
+
+    .label-settings input:focus-visible,
+    .label-toggle input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .label-options:not([hidden]) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+    }
+
+    .copy-actions .primary {
+      width: 100%;
+    }
+
+    .undo-action {
+      border: 1px solid rgba(0, 0, 0, .09);
+      background: var(--soft);
+      color: var(--ink);
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: .38;
+    }
+
+    button:disabled:hover,
+    button:disabled:active {
+      opacity: .38;
+    }
+
+    input,
+    textarea,
+    select {
+      border-color: rgba(0, 0, 0, .09);
+      border-radius: 7px;
+      background: var(--soft);
+      color: var(--ink);
+    }
+
+    input,
+    select {
+      height: 44px;
+      padding: 0 12px;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input:hover,
+    select:hover {
+      border-color: rgba(0, 0, 0, .16);
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, .16);
+    }
+
+    textarea {
+      min-height: 535px;
+      padding: 20px;
+      border: 0;
+      border-radius: 0;
+      background: #fff;
+      font-size: 16px;
+      line-height: 1.75;
+    }
+
+    textarea:focus {
+      box-shadow: inset 0 0 0 2px rgba(0, 122, 255, .26);
+    }
+
+    button {
+      min-height: 44px;
+      height: 44px;
+      border-radius: 7px;
+      background: var(--soft);
+      font-size: 14px;
+      font-weight: 600;
+      transition: color .18s ease, background-color .18s ease, opacity .18s ease;
+    }
+
+    button:hover {
+      transform: none;
+      border-color: transparent;
+      opacity: .88;
+    }
+
+    button:active {
+      opacity: .72;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 1px 2px rgba(0, 82, 204, .18);
+    }
+
+    .primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .clear-action {
+      min-width: 132px;
+      border-color: transparent;
+      background: rgba(255, 59, 48, .09);
+      color: #d70015;
+      font-weight: 650;
+    }
+
+    .clear-action:hover {
+      border-color: transparent;
+      background: rgba(255, 59, 48, .14);
+    }
+
+    .status {
+      min-height: 40px;
+      padding: 10px 18px;
+      border-top-color: rgba(0, 0, 0, .08);
+      background: #fbfbfd;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status.warn {
+      color: #a14d00;
+      background: rgba(255, 149, 0, .08);
+    }
+
+    .mapping {
+      margin-top: 16px;
+      padding: 16px 18px 18px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .035);
+    }
+
+    .mapping-grid {
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .map-item {
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 12px;
+      background: var(--soft);
+    }
+
+    .map-item b {
+      color: var(--accent);
+      font-size: 13px;
+    }
+
+    .map-item span {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .art-fields,
+    .batch-controls,
+    .product-list {
+      background: #fbfbfd;
+    }
+
+    .art-fields {
+      gap: 10px 12px;
+      padding: 16px;
+    }
+
+    .art-note {
+      padding: 0 16px 16px;
+      background: #fbfbfd;
+      font-size: 12px;
+    }
+
+    .product-row {
+      border: 0;
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .07);
+    }
+
+    .remove-row {
+      width: 44px;
+      border: 0;
+      background: rgba(255, 59, 48, .09);
+      color: #d70015;
+    }
+
+    .add-row {
+      border: 0;
+      background: rgba(0, 122, 255, .09);
+      color: var(--accent);
+    }
+
+    @media (min-width: 721px) and (max-width: 1200px) {
+      .inline-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .inline-fields .field:last-child {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        width: min(100vw - 28px, 1440px);
+        padding-top: 14px;
+      }
+
+      header {
+        grid-template-columns: 1fr 190px;
+      }
+
+      header .tool-tabs {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+      }
+
+      .tool-tab {
+        flex: 1;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        width: 100%;
+        padding: 0 0 24px;
+      }
+
+      header {
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        margin: 0 0 12px;
+        padding: max(14px, env(safe-area-inset-top)) 12px 12px;
+        border-width: 0 0 1px;
+        border-radius: 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      h1 {
+        font-size: 25px;
+      }
+
+      .sub {
+        display: none;
+      }
+
+      .today {
+        padding: 8px 10px;
+      }
+
+      .today span {
+        display: none;
+      }
+
+      .today strong {
+        font-size: 14px;
+      }
+
+      .tool-tabs {
+        overflow-x: auto;
+      }
+
+      .tool-tab {
+        min-width: 0;
+        height: 40px;
+        padding: 0 10px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .copy-actions {
+        grid-template-columns: 72px minmax(112px, 1fr);
+        width: min(220px, 68%);
+      }
+
+      .sample-number-options {
+        gap: 10px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 0 10px;
+      }
+
+      section {
+        border-radius: 8px;
+      }
+
+      .section-head {
+        min-height: 60px;
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 12px 8px 14px;
+      }
+
+      .toolbar {
+        width: auto;
+      }
+
+      .toolbar button {
+        width: auto;
+      }
+
+      .single-action {
+        width: min(180px, 48%);
+      }
+
+      .single-action .primary {
+        width: 100%;
+      }
+
+      .inline-fields,
+      .art-fields,
+      .batch-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .inline-fields .field:last-child {
+        grid-column: 1 / -1;
+      }
+
+      textarea {
+        min-height: 330px;
+        padding: 16px;
+        font-size: 15px;
+      }
+
+      .mapping {
+        margin: 12px 10px 0;
+      }
+
+      .mapping-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 420px) {
+      .inline-fields,
+      .art-fields,
+      .batch-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .inline-fields .field:last-child,
+      .art-fields .wide {
+        grid-column: auto;
+      }
+
+      .product-row {
+        grid-template-columns: 1fr;
+      }
+
+      .remove-row {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1 id="pageTitle">寄样信息转换</h1>
+        <p class="sub" id="pageSubtitle">粘贴一条客户寄样信息，自动生成样品备注格式。</p>
+      </div>
+      <div class="tool-tabs" aria-label="工具切换">
+        <button class="tool-tab active" id="sampleTab" type="button">宁波寄样</button>
+        <button class="tool-tab" id="otherSampleTab" type="button">其他仓寄样</button>
+        <button class="tool-tab" id="artTab" type="button">艺术板打样</button>
+        <button class="tool-tab" id="batchTab" type="button">批量样品下单</button>
+      </div>
+      <div class="today" id="sampleToday" aria-label="今日编号状态">
+        <span>今日日期</span>
+        <strong id="todayCode">--</strong>
+        <span>下一个编号</span>
+        <strong id="nextCode">01</strong>
+      </div>
+    </header>
+
+    <div class="tool-view active" id="sampleTool">
+      <div class="grid">
+        <section>
+        <div class="section-head">
+          <div class="section-title">
+            <h2>原始信息</h2>
+            <label class="label-toggle" id="ningboLabelToggle"><input id="ningboLabelEnabled" type="checkbox" aria-controls="ningboLabelOptions" aria-expanded="false">打标签</label>
+            <label class="label-toggle" id="otherLegacyToggle" hidden><input id="otherLegacyEnabled" type="checkbox" aria-controls="output">原来版本</label>
+          </div>
+          <div class="toolbar">
+            <button class="clear-action" id="clearBtn" type="button" title="清空内容">清空</button>
+          </div>
+        </div>
+        <div class="inline-fields">
+          <div class="field">
+            <label for="dateInput">日期编号</label>
+            <input id="dateInput" inputmode="numeric" maxlength="4" placeholder="0526">
+          </div>
+          <div class="field">
+            <label for="startInput">起始编号</label>
+            <input id="startInput" type="number" min="1" step="1" value="1">
+          </div>
+          <div class="field">
+            <label>张苗苗数字</label>
+            <div class="sample-number-options" role="radiogroup" aria-label="张苗苗数字">
+              <label class="sample-number-option" style="--swatch:#4f8d3c;"><input type="radio" name="sampleNumber" value="187"><span>1</span></label>
+              <label class="sample-number-option" style="--swatch:#69bdc5;"><input type="radio" name="sampleNumber" value="134"><span>2</span></label>
+              <label class="sample-number-option" style="--swatch:#f0c21a;--swatch-text:#1a1c1f;"><input type="radio" name="sampleNumber" value="199"><span>3</span></label>
+              <label class="sample-number-option" style="--swatch:#ef7aa8;--swatch-text:#1a1c1f;"><input type="radio" name="sampleNumber" value="195" checked><span>4</span></label>
+              <label class="sample-number-option" style="--swatch:#b92b22;"><input type="radio" name="sampleNumber" value="1995"><span>5</span></label>
+              <label class="sample-number-option" style="--swatch:#9671ee;"><input type="radio" name="sampleNumber" value="135"><span>6</span></label>
+            </div>
+            <input id="fallbackCode" type="hidden" value="195">
+          </div>
+        </div>
+        <div class="label-settings" id="ningboLabelSettings" hidden>
+          <div class="label-options" id="ningboLabelOptions" role="radiogroup" aria-label="标签模板" hidden>
+            <label><input type="radio" name="ningboLabelTemplate" value="manner-address">MANNER（含地址）</label>
+            <label><input type="radio" name="ningboLabelTemplate" value="manner">MANNER（无地址）</label>
+            <label><input type="radio" name="ningboLabelTemplate" value="peets-address">Peet'S（含地址）</label>
+            <label><input type="radio" name="ningboLabelTemplate" value="peets">Peet'S（无地址）</label>
+            <label><input type="radio" name="ningboLabelTemplate" value="blank">空白品牌</label>
+          </div>
+        </div>
+        <textarea id="input" spellcheck="false" placeholder="例如：
+【信息】
+收货人：示例客户
+手机号：13800138000
+所在地区：示例省示例市
+详细地址：示例路1号（虚构示例）
+
+古木细纹-保加木纯色，旧木深棕，齿木黄，齿木深棕
+
+【数字】：195"></textarea>
+        <div class="status" id="inputStatus">每次只处理一条寄样信息；数字行也可以只写 195、134、187 等。</div>
+        </section>
+
+        <section>
+        <div class="section-head">
+          <h2>转换结果</h2>
+          <div class="toolbar copy-actions">
+            <button class="undo-action" id="undoCopyBtn" type="button" title="撤回上一次复制产生的编号变化" disabled>撤回</button>
+            <button class="primary" id="commitBtn" type="button" title="复制结果并记录下次编号">复制</button>
+          </div>
+        </div>
+        <div class="output-wrap">
+          <textarea id="output" placeholder="转换后的内容会显示在这里，也可以手动编辑"></textarea>
+        </div>
+        <div class="status" id="outputStatus">左侧内容变化会实时显示；复制后会记录下一个编号。</div>
+        </section>
+      </div>
+
+      <section class="mapping">
+        <h2>数字对应电话</h2>
+        <div class="mapping-grid" id="mappingGrid"></div>
+      </section>
+    </div>
+
+    <div class="tool-view" id="artTool">
+      <div class="grid">
+        <section>
+          <div class="section-head">
+            <h2>打样信息</h2>
+            <div class="toolbar">
+              <button class="clear-action" id="artClearBtn" type="button">清空内容</button>
+            </div>
+          </div>
+          <div class="art-fields">
+            <div class="field">
+              <label for="artMonth">月份</label>
+              <input id="artMonth" type="number" min="1" max="12">
+            </div>
+            <div class="field">
+              <label for="artGlobalNo">打样总编号</label>
+              <input id="artGlobalNo" type="number" min="1">
+            </div>
+            <div class="field">
+              <label for="artDailyNo">当天第几单</label>
+              <input id="artDailyNo" type="number" min="1">
+            </div>
+            <div class="field">
+              <label for="artDate">打样日期</label>
+              <input id="artDate" type="date">
+            </div>
+            <div class="field">
+              <label for="artColorCount">颜色数量</label>
+              <input id="artColorCount" type="number" min="1" value="2">
+            </div>
+            <div class="field">
+              <label for="artProject">项目</label>
+              <input id="artProject" value="连锁">
+            </div>
+            <div class="field wide">
+              <label for="artColors">颜色</label>
+              <input id="artColors" placeholder="例如：实物">
+            </div>
+            <div class="field">
+              <label for="artTexture">纹路</label>
+              <input id="artTexture" placeholder="例如：实物">
+            </div>
+            <div class="field">
+              <label for="artTime">时间</label>
+              <input id="artTime" value="今天">
+            </div>
+            <div class="field">
+              <label for="artUnitPrice">每个颜色费用</label>
+              <input id="artUnitPrice" type="number" min="0" value="70">
+            </div>
+            <div class="field">
+              <label for="artCopiesPerColor">每个颜色片数</label>
+              <input id="artCopiesPerColor" type="number" min="1" value="3">
+            </div>
+          </div>
+          <div class="art-note">片数按“颜色数量 × 每个颜色片数”计算，费用按“颜色数量 × 每个颜色费用”计算。</div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <h2>打样模板</h2>
+            <div class="toolbar single-action">
+              <button class="primary" id="artCopyBtn" type="button">复制</button>
+            </div>
+          </div>
+          <div class="output-wrap">
+            <textarea class="art-preview" id="artOutput" placeholder="填写左侧内容后实时生成，也可以手动编辑"></textarea>
+          </div>
+          <div class="status" id="artStatus">复制后自动记录下一打样编号和当天单号。</div>
+        </section>
+      </div>
+    </div>
+
+    <div class="tool-view" id="batchTool">
+      <div class="grid">
+        <section>
+          <div class="section-head">
+            <h2>批量产品</h2>
+            <div class="toolbar">
+              <button class="clear-action" id="batchClearBtn" type="button">清空数量</button>
+            </div>
+          </div>
+          <div class="batch-controls">
+            <div class="field">
+              <label for="batchMonth">月份</label>
+              <input id="batchMonth" type="number" min="1" max="12">
+            </div>
+            <div class="field">
+              <label for="batchOrderNo">本月打样单号</label>
+              <input id="batchOrderNo" type="number" min="1">
+            </div>
+          </div>
+          <div class="product-list" id="batchProductList"></div>
+          <button class="add-row" id="batchAddBtn" type="button">添加产品</button>
+          <div class="art-note">数量留空或填写 0 时，该产品不会出现在右侧文本中。</div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <h2>下单文本</h2>
+            <div class="toolbar single-action">
+              <button class="primary" id="batchCopyBtn" type="button">复制</button>
+            </div>
+          </div>
+          <div class="output-wrap">
+            <textarea class="batch-preview" id="batchOutput" placeholder="填写产品数量后实时生成，也可以手动编辑"></textarea>
+          </div>
+          <div class="status" id="batchStatus">复制后自动记录本月下一个打样单号。</div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Project Pages share an origin, so keep this site's counters independent.
+    const appStorage = {
+      getItem: key => localStorage.getItem(`JieGeSamples:${key}`),
+      setItem: (key, value) => localStorage.setItem(`JieGeSamples:${key}`, value)
+    };
+
+    const phoneMap = {
+      "195": "19542985838",
+      "134": "13482810634",
+      "187": "18721378741",
+      "199": "19951596290",
+      "1995": "19952267432",
+      "135": "13564337098"
+    };
+
+    const customerNumberMap = {
+      "1995": "5",
+      "199": "3",
+      "195": "4",
+      "187": "1",
+      "134": "2",
+      "135": "6"
+    };
+
+    const ningboLabelTemplates = {
+      "manner-address": { brand: "MANNER", address: true },
+      "manner": { brand: "MANNER", address: false },
+      "peets-address": { brand: "Peet'S", address: true },
+      "peets": { brand: "Peet'S", address: false },
+      "blank": { brand: "", address: false }
+    };
+
+    const batchCatalog = {
+      "鎏金板": {
+        "200*200mm": 3,
+        "200*300mm": 5
+      },
+      "砂岩板": {
+        "200*300mm": 8
+      },
+      "奢石": {
+        "200*200mm": 7,
+        "200*300mm": 10
+      },
+      "砖纹": {
+        "200*300mm": 5
+      }
+    };
+
+    const defaultBatchRows = [
+      ["鎏金板", "200*200mm"],
+      ["鎏金板", "200*300mm"],
+      ["砂岩板", "200*300mm"],
+      ["奢石", "200*200mm"],
+      ["奢石", "200*300mm"],
+      ["砖纹", "200*300mm"]
+    ];
+
+    const el = {
+      todayCode: document.querySelector("#todayCode"),
+      nextCode: document.querySelector("#nextCode"),
+      dateInput: document.querySelector("#dateInput"),
+      startInput: document.querySelector("#startInput"),
+      fallbackCode: document.querySelector("#fallbackCode"),
+      numberChoices: document.querySelectorAll('input[name="sampleNumber"]'),
+      ningboLabelToggle: document.querySelector("#ningboLabelToggle"),
+      ningboLabelSettings: document.querySelector("#ningboLabelSettings"),
+      ningboLabelEnabled: document.querySelector("#ningboLabelEnabled"),
+      ningboLabelOptions: document.querySelector("#ningboLabelOptions"),
+      ningboLabelChoices: document.querySelectorAll('input[name="ningboLabelTemplate"]'),
+      otherLegacyToggle: document.querySelector("#otherLegacyToggle"),
+      otherLegacyEnabled: document.querySelector("#otherLegacyEnabled"),
+      input: document.querySelector("#input"),
+      output: document.querySelector("#output"),
+      inputStatus: document.querySelector("#inputStatus"),
+      outputStatus: document.querySelector("#outputStatus"),
+      mappingGrid: document.querySelector("#mappingGrid"),
+      clearBtn: document.querySelector("#clearBtn"),
+      undoCopyBtn: document.querySelector("#undoCopyBtn"),
+      commitBtn: document.querySelector("#commitBtn"),
+      pageTitle: document.querySelector("#pageTitle"),
+      pageSubtitle: document.querySelector("#pageSubtitle"),
+      sampleToday: document.querySelector("#sampleToday"),
+      sampleTab: document.querySelector("#sampleTab"),
+      otherSampleTab: document.querySelector("#otherSampleTab"),
+      artTab: document.querySelector("#artTab"),
+      batchTab: document.querySelector("#batchTab"),
+      sampleTool: document.querySelector("#sampleTool"),
+      artTool: document.querySelector("#artTool"),
+      batchTool: document.querySelector("#batchTool"),
+      artMonth: document.querySelector("#artMonth"),
+      artGlobalNo: document.querySelector("#artGlobalNo"),
+      artDailyNo: document.querySelector("#artDailyNo"),
+      artDate: document.querySelector("#artDate"),
+      artColorCount: document.querySelector("#artColorCount"),
+      artProject: document.querySelector("#artProject"),
+      artColors: document.querySelector("#artColors"),
+      artTexture: document.querySelector("#artTexture"),
+      artTime: document.querySelector("#artTime"),
+      artUnitPrice: document.querySelector("#artUnitPrice"),
+      artCopiesPerColor: document.querySelector("#artCopiesPerColor"),
+      artOutput: document.querySelector("#artOutput"),
+      artStatus: document.querySelector("#artStatus"),
+      artClearBtn: document.querySelector("#artClearBtn"),
+      artCopyBtn: document.querySelector("#artCopyBtn"),
+      batchMonth: document.querySelector("#batchMonth"),
+      batchOrderNo: document.querySelector("#batchOrderNo"),
+      batchProductList: document.querySelector("#batchProductList"),
+      batchAddBtn: document.querySelector("#batchAddBtn"),
+      batchClearBtn: document.querySelector("#batchClearBtn"),
+      batchOutput: document.querySelector("#batchOutput"),
+      batchStatus: document.querySelector("#batchStatus"),
+      batchCopyBtn: document.querySelector("#batchCopyBtn")
+    };
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function getDateCode(date = new Date()) {
+      return `${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
+    }
+
+    function getLocalDateValue(date = new Date()) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    let activeSampleMode = "ningbo";
+    let activeToolName = null;
+    let lastCopyCheckpoint = null;
+    let sampleDraft = null;
+    let artDraft = null;
+    let batchDraft = null;
+    let copyPending = false;
+    let sampleCalendarDay = getLocalDateValue();
+    let artCalendarDay = getLocalDateValue();
+    let batchCalendarPeriod = getArtPeriod();
+
+    function syncNumberPicker() {
+      const selectedCode = phoneMap[el.fallbackCode.value] ? el.fallbackCode.value : "195";
+      el.fallbackCode.value = selectedCode;
+      el.numberChoices.forEach(input => {
+        input.checked = input.value === selectedCode;
+      });
+    }
+
+    function syncSampleLabelControls() {
+      el.ningboLabelToggle.hidden = activeSampleMode !== "ningbo";
+      el.otherLegacyToggle.hidden = activeSampleMode !== "other";
+      el.ningboLabelSettings.hidden = activeSampleMode !== "ningbo" || !el.ningboLabelEnabled.checked;
+      el.ningboLabelOptions.hidden = !el.ningboLabelEnabled.checked;
+      el.ningboLabelEnabled.setAttribute("aria-expanded", String(el.ningboLabelEnabled.checked));
+    }
+
+    function resetNingboLabels() {
+      el.ningboLabelEnabled.checked = false;
+      el.ningboLabelChoices.forEach(input => { input.checked = false; });
+      syncSampleLabelControls();
+    }
+
+    function getNingboLabelText() {
+      if (activeSampleMode !== "ningbo" || !el.ningboLabelEnabled.checked) return "";
+      const selected = [...el.ningboLabelChoices].find(input => input.checked);
+      const template = ningboLabelTemplates[selected?.value];
+      if (!template) return "";
+
+      const lines = ["【都需要打标签】", `品牌：${template.brand}`];
+      if (template.address) lines.push("地址：");
+      lines.push("联系：张苗苗", `电话：${phoneMap[el.fallbackCode.value]}`);
+      return lines.join("\n");
+    }
+
+    function updateNingboLabelPreview() {
+      syncSampleLabelControls();
+      if (activeSampleMode !== "ningbo") return;
+      if (!sampleDraft || !el.output.value.trim()) {
+        updatePreview();
+        return;
+      }
+
+      // Update only the label block so copied order numbers and edited body text stay intact.
+      const wasGenerated = el.output.value === sampleDraft.generatedText;
+      let text = el.output.value;
+      if (sampleDraft.labelText) {
+        const labelStart = text.lastIndexOf("\n\n【都需要打标签】\n");
+        if (labelStart >= 0) text = text.slice(0, labelStart);
+      }
+      const labelText = getNingboLabelText();
+      el.output.value = labelText ? `${text}\n\n${labelText}` : text;
+      sampleDraft.labelText = labelText;
+      if (wasGenerated) sampleDraft.generatedText = el.output.value;
+      setStatus(el.outputStatus, labelText ? "标签已更新。" : "未添加标签。");
+    }
+
+    function formatOtherLabelLines(dateSequence, phone, legacy = false) {
+      return [
+        legacy ? "[正面]：MM" : "[正面]：MM➕产品型号＆色号+日期",
+        `[背面]：${dateSequence}➕${legacy ? "产品型号＆色号➕" : ""}${phone}`
+      ].join("\n");
+    }
+
+    function updateOtherFormatPreview() {
+      if (activeSampleMode !== "other") return;
+      if (!el.output.value.trim()) {
+        updatePreview();
+        return;
+      }
+
+      // Replace only standard label pairs, preserving copied numbers and manual body edits.
+      const wasGenerated = el.output.value === sampleDraft?.generatedText;
+      let replaced = false;
+      el.output.value = el.output.value.replace(
+        /^\[正面\]：MM(?:➕产品型号＆色号\+日期)?\n\[背面\]：(\d{6,})(?:➕产品型号＆色号)?➕([^\n]+)$/gm,
+        (_, dateSequence, phone) => {
+          replaced = true;
+          return formatOtherLabelLines(dateSequence, phone, el.otherLegacyEnabled.checked);
+        }
+      );
+      if (wasGenerated) sampleDraft.generatedText = el.output.value;
+      setStatus(el.outputStatus, replaced
+        ? (el.otherLegacyEnabled.checked ? "已切换为原来版本，编号不变。" : "已切换为默认版本，编号不变。")
+        : "标签已手动修改，保留当前内容；下次生成使用所选版本。", !replaced);
+    }
+
+    function updateUndoButton() {
+      const currentDate = (el.dateInput.value.trim() || getDateCode()).padStart(4, "0").slice(-4);
+      const canUndo = Boolean(lastCopyCheckpoint)
+        && lastCopyCheckpoint.mode === activeSampleMode
+        && lastCopyCheckpoint.dateCode === currentDate
+        && lastCopyCheckpoint.calendarDate === getLocalDateValue();
+      el.undoCopyBtn.disabled = !canUndo;
+    }
+
+    function getSampleStateKey(mode = activeSampleMode) {
+      return mode === "other" ? "otherWarehouseSampleState" : "sampleFormatterState";
+    }
+
+    function readStoredObject(key) {
+      try {
+        const value = JSON.parse(appStorage.getItem(key) || "{}");
+        return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function getState(mode = activeSampleMode) {
+      return readStoredObject(getSampleStateKey(mode));
+    }
+
+    function setState(state, mode = activeSampleMode) {
+      appStorage.setItem(getSampleStateKey(mode), JSON.stringify(state));
+    }
+
+    function getArtState() {
+      const state = readStoredObject("artSampleState");
+      const orders = { ...state.orders };
+      const dailyOrders = { ...state.dailyOrders };
+      // Migrate the previously single-period counters without losing saved work.
+      if (state.period && orders[state.period] == null) orders[state.period] = state.nextGlobalNo;
+      if (state.dailyDate && dailyOrders[state.dailyDate] == null) dailyOrders[state.dailyDate] = state.nextDailyNo;
+      return { ...state, orders, dailyOrders };
+    }
+
+    function setArtState(state) {
+      appStorage.setItem("artSampleState", JSON.stringify(state));
+    }
+
+    function getBatchState() {
+      return readStoredObject("batchSampleState");
+    }
+
+    function setBatchState(state) {
+      appStorage.setItem("batchSampleState", JSON.stringify(state));
+    }
+
+    function syncToday() {
+      const today = getDateCode();
+      const state = getState();
+      const calendarDate = getLocalDateValue();
+      const dayChanged = state.calendarDate ? state.calendarDate !== calendarDate : state.dateCode !== today;
+      let next = Number(dayChanged ? 1 : state.nextIndex);
+      if (!Number.isFinite(next) || next < 1) next = 1;
+
+      el.todayCode.textContent = today;
+      el.dateInput.value = dayChanged ? today : (state.dateCode || today);
+      el.startInput.value = next;
+      el.fallbackCode.value = el.fallbackCode.value || "195";
+      el.nextCode.textContent = pad2(next);
+      sampleCalendarDay = calendarDate;
+      setState({ dateCode: el.dateInput.value, calendarDate, nextIndex: next });
+      syncNumberPicker();
+      updateUndoButton();
+    }
+
+    function refreshTodayIfNeeded() {
+      if (copyPending) return;
+      if (sampleCalendarDay !== getLocalDateValue()) {
+        lastCopyCheckpoint = null;
+        syncToday();
+        updatePreview();
+      }
+
+      refreshArtTodayIfNeeded();
+      refreshBatchMonthIfNeeded();
+    }
+
+    function scheduleMorningCheck() {
+      const now = new Date();
+      const nextCheck = new Date(now);
+      nextCheck.setHours(8, 30, 0, 0);
+      if (nextCheck <= now) nextCheck.setDate(nextCheck.getDate() + 1);
+
+      window.setTimeout(() => {
+        refreshTodayIfNeeded();
+        scheduleMorningCheck();
+      }, nextCheck.getTime() - now.getTime());
+    }
+
+    function cleanLine(line) {
+      return line
+        .replace(/^[【\[]?(信息|数字|样品信息)[】\]]?[:：]?/u, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function isNoiseLine(line) {
+      return /^(信息|数字|样品信息)$/u.test(line) || /^[-—_]{3,}$/u.test(line);
+    }
+
+    function isAddressLike(line) {
+      return /(手机号|手机号码|电话|收货人|所在地区|详细地址|地址|收件人|收货地址|联系人|地区|邮政编码|邮编)[:：]?/u.test(line)
+        || hasPhone(line)
+        || /(省|市|区|县|镇|街道|大道|道路|路|弄|村|香港|新界|九龍|九龙|葵芳|商業中心|商业中心|樓|楼|層|层|全層|全层)/u.test(line);
+    }
+
+    function findPhoneMatch(line) {
+      return line.match(/1[3-9](?:[\s-]*\d){9}|(?<!\d)[2-9]\d{7}(?!\d)/u);
+    }
+
+    function hasPhone(line) {
+      return Boolean(findPhoneMatch(line));
+    }
+
+    function getTextBeforePhone(line) {
+      const match = findPhoneMatch(line);
+      return match ? line.slice(0, match.index) : line;
+    }
+
+    function getTextAfterPhone(line) {
+      const match = findPhoneMatch(line);
+      return match ? line.slice(match.index + match[0].length) : "";
+    }
+
+    function stripLeadingSerial(line) {
+      return line.replace(/^\s*\d+\s*[.、\-－]\s*/u, "").trim();
+    }
+
+    function isCodeLine(line) {
+      return /^(1995|195|134|187|199|135)$/.test(line);
+    }
+
+    function isCustomerInfoLine(line) {
+      const cleaned = stripLeadingSerial(line);
+      return isAddressLike(cleaned)
+        || hasPhone(cleaned)
+        || isOrganizationLine(cleaned)
+        || /(收货人|收件人|联系人|姓名|所在地区|详细地址|地址|手机号|手机号码|电话|邮政编码|邮编)/u.test(cleaned);
+    }
+
+    function isOrganizationLine(line) {
+      return /(有限公司|公司|工作室|办公室|门店|店铺|工厂|装饰|设计|工程|商贸|建材|材料|经营部)/u.test(line)
+        && !/(包邮|打样|样品|色号|型号)/u.test(line);
+    }
+
+    function looksLikeProduct(line) {
+      if (!line) return false;
+      if (isNoiseLine(line) || isAddressLike(line)) return false;
+      if (/^\d{3,4}$/.test(line)) return false;
+      return isDatedProductLine(line) || /[,，、＆&+\-－]/u.test(line) || line.length >= 8;
+    }
+
+    function isDatedProductLine(line) {
+      return /^\s*\d+[./]\d+(?:[./]\d+)?(?=\s*[^\d\s])/u.test(line);
+    }
+
+    function normalizeName(value, { allowTail = true } = {}) {
+      // Reject delivery prose before tail normalization can turn it into a short name.
+      if (isDeliveryInstruction(value)) return '';
+      let text = String(value || "")
+        .replace(/【[^】]*】|\[[^\]]*\]/g, "")
+        .replace(/^\s*\d+\s*[.、\-－]\s*/u, "")
+        .replace(/\s*(收货|收|取件|拿)\s*$/u, "")
+        .replace(/^[\s,，;；:：]+|[\s,，;；:：]+$/g, "")
+        .replace(/^(收货人|收件人|联系人|姓名|客户)\s*[:：]?/u, "");
+
+      const serialParts = text.split(/\d+\s*[.、\-－]\s*/u).map(part => part.trim()).filter(Boolean);
+      if (serialParts.length > 1) {
+        text = serialParts[serialParts.length - 1];
+      }
+
+      text = text.replace(/[^\u4e00-\u9fa5A-Za-z0-9·._-]/g, "").trim();
+      if (isValidName(text) || !allowTail) return text;
+
+      const tail = text.match(/([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})$/u);
+      return tail ? tail[1] : text;
+    }
+
+    function isDeliveryInstruction(value) {
+      return /(快递|物流|优先发|优选发|请发|请走|请用|送货|配送|到付|代收|谢谢)/u.test(String(value || ''));
+    }
+
+    function isValidName(value) {
+      const blocked = new Set(["收", "收货", "电话", "手机", "手机号码", "地址"]);
+      return !blocked.has(value)
+        && !isDeliveryInstruction(value)
+        && !/(省|市|区|县|镇|街|路|道|号|栋|幢|楼|室|座|苑|园|里|村|店|酒店|公司|馆)$/u.test(value)
+        && /^[\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9}$/u.test(value);
+    }
+
+    function isLikelyCustomerNameLine(line) {
+      const cleaned = cleanLine(line);
+      if (!cleaned || isCustomerInfoLine(cleaned) || isCodeLine(cleaned) || isDatedProductLine(cleaned)) return false;
+
+      const hasEntryNumber = /^\s*\d+\s*[.、\-－]/u.test(cleaned);
+      const endsLikeName = /[,，]\s*$/.test(cleaned);
+      const name = normalizeName(cleaned);
+
+      return (hasEntryNumber || endsLikeName) && isValidName(name);
+    }
+
+    function findStandaloneNumberedCustomerName(lines) {
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = cleanLine(lines[index]);
+        // A serial such as "4.张三" is a customer name. A decimal/date-like
+        // product prefix such as "8.31鎏金板" must remain product information.
+        const match = line.match(/^\s*\d+\s*[.、](?!\s*\d)\s*([^\s,，;；:：]{1,10})\s*[,，]?\s*$/u);
+        if (!match) continue;
+        if (/(打样|样品|颜色|纹路|数量|费用|项目)/u.test(match[1])) continue;
+
+        const name = normalizeName(match[1]);
+        if (isValidName(name)) return { index, name };
+      }
+
+      return null;
+    }
+
+    function findPrefixedCustomerName(lines) {
+      const firstCustomerIndex = lines.findIndex(line => {
+        const cleaned = cleanLine(line);
+        return cleaned && isCustomerInfoLine(cleaned);
+      });
+
+      if (firstCustomerIndex <= 0) return null;
+
+      for (let index = firstCustomerIndex - 1; index >= 0; index -= 1) {
+        const line = cleanLine(lines[index]);
+        if (!line) break;
+        if (isNoiseLine(line)) continue;
+        if (!isLikelyCustomerNameLine(line)) break;
+        return {
+          index,
+          name: normalizeName(line)
+        };
+      }
+
+      return null;
+    }
+
+    function findNameAfterPhoneLine(lines) {
+      const cleanedLines = lines.map(cleanLine);
+      const phoneIndex = cleanedLines.findIndex(line => hasPhone(line));
+      if (phoneIndex < 0) return null;
+
+      for (let index = phoneIndex + 1; index < cleanedLines.length; index += 1) {
+        const line = cleanedLines[index];
+        if (!line) break;
+        if (isNoiseLine(line) || isCodeLine(line)) continue;
+        if (isCustomerInfoLine(line)) break;
+        if (isDatedProductLine(line)) break;
+        if (isLikelyCustomerNameLine(line)) {
+          return { index, name: normalizeName(line) };
+        }
+        // A line with sample-like punctuation/content after the recipient block
+        // is a product description, never a standalone customer name.
+        if (looksLikeProduct(line)) break;
+
+        const name = normalizeName(line);
+        if (isValidName(name)) {
+          return { index, name };
+        }
+
+        break;
+      }
+
+      return null;
+    }
+
+    function findNameAfterPhoneSameLine(lines) {
+      const cleanedLines = lines.map(cleanLine);
+
+      for (let index = 0; index < cleanedLines.length; index += 1) {
+        const line = cleanedLines[index];
+        if (!hasPhone(line)) continue;
+
+        const afterPhone = getTextAfterPhone(line)
+          .replace(/^[\s,，;；:：。．、.]+/u, "")
+          .trim();
+        if (!afterPhone) continue;
+
+        const explicitMatch = afterPhone.match(/^(?:收货人|收件人|联系人|姓名|客户)\s*[:：]?\s*([^\s,，;；]+)/u);
+        if (!explicitMatch && isAddressLike(afterPhone)) continue;
+
+        const rawName = explicitMatch ? explicitMatch[1] : (afterPhone.match(/^([^\s,，;；。]+)/u) || [])[1];
+        if (!rawName) continue;
+
+        const name = normalizeName(rawName, { allowTail: !explicitMatch });
+        if (isValidName(name) && !isAddressLike(name)) {
+          return { index, name };
+        }
+      }
+
+      return null;
+    }
+
+    function findNameBeforePhoneSameLine(lines) {
+      const cleanedLines = lines.map(cleanLine);
+
+      for (let index = 0; index < cleanedLines.length; index += 1) {
+        const line = cleanedLines[index];
+        if (!hasPhone(line)) continue;
+
+        const beforePhone = getTextBeforePhone(line);
+        const match = beforePhone.match(/(?:^|\s)\d+\s*[.、\-－]?\s*([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*[,，;；]?\s*$/u)
+          || beforePhone.match(/(?:^|[\s,，;；:：。])([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*[,，;；]?\s*$/u);
+        if (!match) continue;
+
+        const name = normalizeName(match[1]);
+        if (isValidName(name)) return { index, name };
+      }
+
+      return null;
+    }
+
+    function findNameInContactFields(lines) {
+      for (const [index, rawLine] of lines.entries()) {
+        const line = cleanLine(rawLine);
+        if (isDatedProductLine(line)) continue;
+        const [candidate, phone = "", ...addressParts] = line.split(/[,，;；]/u).map(part => part.trim());
+        const address = addressParts.join(" ");
+        // A clear name/number/address structure remains useful even when the phone is incomplete.
+        if (!/^\d{6,15}$/u.test(phone.replace(/[\s()+-]/g, "")) || !isAddressLike(address)) continue;
+
+        const name = normalizeName(candidate, { allowTail: false });
+        if (isValidName(name) && !isAddressLike(name)) return { index, name };
+      }
+
+      return null;
+    }
+
+    function findNameBeforePhoneLine(lines) {
+      const cleanedLines = lines.map(cleanLine);
+      const phoneIndex = cleanedLines.findIndex(line => hasPhone(line));
+      if (phoneIndex <= 0) return null;
+
+      for (let index = phoneIndex - 1; index >= 0; index -= 1) {
+        const line = cleanedLines[index];
+        // A blank line separates sample descriptions from the recipient block.
+        // Only use this fallback when a standalone name sits directly by the phone.
+        if (!line) break;
+        if (isNoiseLine(line) || isCodeLine(line)) continue;
+        if (isCustomerInfoLine(line)) break;
+        if (isDatedProductLine(line)) break;
+
+        const name = normalizeName(line);
+        if (isValidName(name)) {
+          return { index, name };
+        }
+
+        break;
+      }
+
+      return null;
+    }
+
+    function findNameBeforeReceiveMarker(lines) {
+      const cleanedLines = lines.map(cleanLine);
+
+      for (let index = 0; index < cleanedLines.length; index += 1) {
+        const line = cleanedLines[index];
+        if (!line || !/(收货|收)(?:\s*\d|\s*$|[\s,，;；])/u.test(line)) continue;
+
+        const matches = [...line.matchAll(/(?:^|[\s,，;；:：。])([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*(?:收货|收)(?=\s*\d|\s*$|[\s,，;；])/gu)];
+        for (let matchIndex = matches.length - 1; matchIndex >= 0; matchIndex -= 1) {
+          const name = normalizeName(matches[matchIndex][1]);
+          if (isValidName(name)) return { index, name };
+        }
+      }
+
+      return null;
+    }
+
+    function compactCustomerLines(lines) {
+      return lines.map((rawLine, index) => {
+        const line = cleanLine(rawLine);
+        const previous = index > 0 ? cleanLine(lines[index - 1]) : "";
+        return {
+          index,
+          line,
+          withPrevious: previous && !isDatedProductLine(previous) ? `${previous}${line}` : line
+        };
+      });
+    }
+
+    function extractNameFromTail(text) {
+      const parenMatches = [...text.matchAll(/[（(]\s*([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*[）)]\s*(\d*)/gu)];
+      const parenMatch = parenMatches[parenMatches.length - 1];
+      if (parenMatch) {
+        const name = normalizeName(`${parenMatch[1]}${parenMatch[2] || ""}`);
+        if (isValidName(name)) return name;
+      }
+
+      const trimmed = text
+        .replace(/1[3-9]\d{9}.*$/u, "")
+        .replace(/\s*(收货|收|取件|拿|电话|手机号码|手机号)\s*$/u, "")
+        .replace(/[，,;；:：。．、.]+$/u, "")
+        .trim();
+      const tokens = trimmed.split(/[\s,，;；:：。．、.]+/u).filter(Boolean);
+      let numericSuffix = "";
+
+      for (let index = tokens.length - 1; index >= 0; index -= 1) {
+        const token = tokens[index].replace(/[（）()]/g, "");
+        if (/^(收货|收|取件|拿|电话|手机号码|手机号)$/.test(token)) continue;
+        if (/^\d{1,2}$/.test(token)) {
+          numericSuffix = `${token}${numericSuffix}`;
+          continue;
+        }
+
+        const name = normalizeName(`${token}${numericSuffix}`);
+        if (isValidName(name)) return name;
+        numericSuffix = "";
+      }
+
+      const directName = normalizeName(trimmed);
+      return isValidName(directName) ? directName : "";
+    }
+
+    function extractNameAfterAddress(text) {
+      const markers = ["驿站", "门口", "单元", "小区", "号", "室", "座", "区", "楼", "路", "街", "道", "镇", "村", "城", "苑", "园"];
+      let lastIndex = -1;
+      let markerLength = 0;
+
+      for (const marker of markers) {
+        const index = text.lastIndexOf(marker);
+        if (index > lastIndex) {
+          lastIndex = index;
+          markerLength = marker.length;
+        }
+      }
+
+      if (lastIndex < 0) return "";
+
+      return extractNameFromTail(text.slice(lastIndex + markerLength));
+    }
+
+    function findNumberSuffixedCustomerName(lines) {
+      // A trailing customer/color digit is stronger evidence than unlabelled text
+      // after a phone. Reuse contact-aware finders, never scan product text for digits.
+      const finders = [findNameBeforePhoneSameLine, findNameInContactFields,
+        findStandaloneNumberedCustomerName, findPrefixedCustomerName,
+        findNameBeforeReceiveMarker, findNameBeforePhoneLine,
+        findNameAfterPhoneSameLine, findNameAfterPhoneLine];
+      for (const findName of finders) {
+        const candidate = findName(lines);
+        if (candidate && /\d$/u.test(candidate.name)) return candidate;
+      }
+      // A wrapped address may end in the name immediately before the phone line.
+      for (const item of compactCustomerLines(lines)) {
+        if (!hasPhone(item.line)) continue;
+        const name = extractNameAfterAddress(getTextBeforePhone(item.withPrevious));
+        if (name && /\d$/u.test(name)) return { index: item.index, name };
+      }
+      return null;
+    }
+
+    function extractCustomer(lines) {
+      for (const [index, line] of lines.entries()) {
+        const matches = cleanLine(line).matchAll(/(?:收货人|收件人|联系人|姓名)\s*[:：]?\s*([^\s,，；;]+)/gu);
+        for (const match of matches) {
+          // A mislabeled address must not become a name by truncating its tail.
+          const name = normalizeName(match[1], { allowTail: false });
+          if (isValidName(name)) return { index, name };
+        }
+      }
+
+      const numberSuffixedName = findNumberSuffixedCustomerName(lines);
+      if (numberSuffixedName) return numberSuffixedName;
+
+      const nameAfterPhoneSameLine = findNameAfterPhoneSameLine(lines);
+      if (nameAfterPhoneSameLine?.name) return nameAfterPhoneSameLine;
+
+      const nameBeforePhoneSameLine = findNameBeforePhoneSameLine(lines);
+      if (nameBeforePhoneSameLine?.name) return nameBeforePhoneSameLine;
+
+      const nameInContactFields = findNameInContactFields(lines);
+      if (nameInContactFields?.name) return nameInContactFields;
+
+      const standaloneNumberedName = findStandaloneNumberedCustomerName(lines);
+      if (standaloneNumberedName?.name) return standaloneNumberedName;
+
+      const prefixedName = findPrefixedCustomerName(lines);
+      if (prefixedName?.name) return prefixedName;
+
+      const nameBeforeReceiveMarker = findNameBeforeReceiveMarker(lines);
+      if (nameBeforeReceiveMarker?.name) return nameBeforeReceiveMarker;
+
+      const nameAfterPhone = findNameAfterPhoneLine(lines);
+      if (nameAfterPhone?.name) return nameAfterPhone;
+
+      const nameBeforePhone = findNameBeforePhoneLine(lines);
+      if (nameBeforePhone?.name) return nameBeforePhone;
+
+      for (const item of compactCustomerLines(lines)) {
+        const line = item.line;
+        if (!hasPhone(line)) continue;
+
+        const beforePhone = getTextBeforePhone(item.withPrevious);
+        const nameAfterAddress = extractNameAfterAddress(beforePhone);
+        if (nameAfterAddress) return { index: item.index, name: nameAfterAddress };
+
+        const nameBeforePhone = extractNameFromTail(beforePhone);
+        if (nameBeforePhone) return { index: item.index, name: nameBeforePhone };
+
+        const compactName = normalizeName(stripLeadingSerial(getTextBeforePhone(item.line)));
+        if (isValidName(compactName)) return { index: item.index, name: compactName };
+      }
+
+      for (const [index, rawLine] of lines.entries()) {
+        const line = cleanLine(rawLine);
+        const match = line.match(/[（(]\s*([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*[）)]\s*(\d*)\s*[,，]?\s*1[3-9]\d{9}/u);
+        if (match) {
+          const name = normalizeName(`${match[1]}${match[2] || ""}`);
+          if (isValidName(name)) return { index, name };
+        }
+      }
+
+      for (const [index, rawLine] of lines.entries()) {
+        const line = cleanLine(rawLine);
+        const match = line.match(/^\s*(?:\d+\s*[.、\-－]\s*)?([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*[,，]\s*(?:1[3-9]\d{9}|手机号码|手机号|电话|收|收货|地址|[\u4e00-\u9fa5]+省|[\u4e00-\u9fa5]+市)/u);
+        if (match) {
+          const name = normalizeName(match[1]);
+          if (isValidName(name)) return { index, name };
+        }
+      }
+
+      for (const [index, rawLine] of lines.entries()) {
+        const line = cleanLine(rawLine);
+        const match = line.match(/(?:^|\s)([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*[,，]\s*(?:收|收货|手机号码|手机号|电话)/u);
+        if (match) {
+          const name = normalizeName(match[1]);
+          if (isValidName(name)) return { index, name };
+        }
+      }
+
+      for (const [index, rawLine] of lines.entries()) {
+        const line = cleanLine(rawLine);
+        const match = line.match(/^([\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9})\s*(?:手机号码|手机号|电话|收|收货)/u);
+        if (match) {
+          const name = normalizeName(match[1]);
+          if (isValidName(name)) return { index, name };
+        }
+      }
+
+      const hasCustomerAddressLine = lines
+        .map(cleanLine)
+        .some(line => isCustomerInfoLine(line));
+
+      if (hasCustomerAddressLine) return { index: -1, name: "客户" };
+
+      for (const [index, rawLine] of lines.entries()) {
+        const line = cleanLine(rawLine);
+        if (isValidName(line) && !looksLikeProduct(line)) {
+          return { index, name: line };
+        }
+      }
+
+      return { index: -1, name: "客户" };
+    }
+
+    function extractName(lines) {
+      return extractCustomer(lines).name;
+    }
+
+    function extractCode(lines, fallbackCode) {
+      for (const line of lines) {
+        const match = line.match(/(?:数字|电话编码|编码)\s*[:：]?\s*(1995|195|134|187|199|135)\b/u);
+        if (match) return match[1];
+      }
+
+      for (let index = lines.length - 1; index >= 0; index -= 1) {
+        const line = cleanLine(lines[index]);
+        if (phoneMap[line]) return line;
+      }
+
+      return phoneMap[fallbackCode] ? fallbackCode : "";
+    }
+
+    function extractCustomerSourceSerial(lines, customer = extractCustomer(lines)) {
+      for (const [index, rawLine] of lines.entries()) {
+        const line = String(rawLine || "").replace(/^\s*【以此为准】\s*/u, "");
+        if (isDatedProductLine(line)) continue;
+        const match = line.match(/^\s*(\d+)\s*[.、\-－]\s*/u);
+        if (!match) continue;
+
+        const remainder = line.slice(match[0].length).trim();
+        const hasCustomerLabel = /^(?:收货人|收件人|联系人|姓名|客户)\s*[:：]?/u.test(remainder);
+        if (index === customer.index || hasCustomerLabel || isCustomerInfoLine(line)) return match[1];
+      }
+
+      return "";
+    }
+
+    function toCircledDigits(value) {
+      const circledDigits = {
+        "0": "⓪",
+        "1": "①",
+        "2": "②",
+        "3": "③",
+        "4": "④",
+        "5": "⑤",
+        "6": "⑥",
+        "7": "⑦",
+        "8": "⑧",
+        "9": "⑨"
+      };
+
+      return String(value || "")
+        .split("")
+        .map(digit => circledDigits[digit] || digit)
+        .join("");
+    }
+
+    function formatCustomerName(name, code, sourceSerial = "") {
+      const customerNumber = customerNumberMap[code];
+      const normalizedName = customerNumber
+        ? `${name.replace(/\d+$/u, "")}${customerNumber}`
+        : name;
+      const sourceMarker = toCircledDigits(sourceSerial);
+
+      // The final digit is a fixed mark for the selected phone code, not an order number.
+      return sourceMarker ? `${normalizedName}-${sourceMarker}` : normalizedName;
+    }
+
+    function extractProducts(lines, customer = extractCustomer(lines)) {
+      const cleanedLines = lines.map(cleanLine);
+      const productLines = cleanedLines.filter((line, index) => {
+        if (!line || isNoiseLine(line) || isCodeLine(line)) return false;
+        if (index === customer.index) return false;
+        // Bare postcodes belong to the adjacent contact block, not a separated product list.
+        if (/^[1-9]\d{5}$/u.test(line) && [cleanedLines[index - 1], cleanedLines[index + 1]]
+          .some(neighbor => neighbor && isCustomerInfoLine(neighbor))) return false;
+        if (isCustomerInfoLine(line)) return false;
+        return true;
+      });
+
+      return productLines.length ? productLines.join("\n") : "";
+    }
+
+    function splitBlocks(text) {
+      return [text.replace(/\r/g, "").split("\n")];
+    }
+
+    function parseBlocks(rawText) {
+      return splitBlocks(rawText)
+        .map(block => block.map(line => line.trim()).filter(line => !isNoiseLine(line)))
+        .filter(block => block.some(line => line.trim()));
+    }
+
+    function formatOne(block, sequence, dateCode, fallbackCode, mode = "ningbo", legacyOther = false) {
+      const customer = extractCustomer(block);
+      const name = customer.name;
+      const code = extractCode(block, fallbackCode);
+      const products = extractProducts(block, customer);
+      const sourceSerial = extractCustomerSourceSerial(block, customer);
+      const displayName = formatCustomerName(name, code, sourceSerial);
+      const displayCode = code || "（未填写默认数字）";
+      const warnings = [];
+
+      if (customer.index < 0) warnings.push(`第 ${sequence} 条未识别到客户姓名，请核对`);
+      if (!products) warnings.push(`第 ${sequence} 条未识别到样品信息`);
+      if (mode === "other" && !phoneMap[code]) warnings.push(`第 ${sequence} 条未识别到数字编码`);
+
+      const productText = products || "（未识别到样品信息）";
+      const currentText = [
+        productText,
+        "",
+        `${sequence}.${displayName}`,
+        "",
+        `[正面]：[${displayCode}]`,
+        `[背面]：[${displayCode}]➕产品型号＆色号+${pad2(sequence)}`
+      ].join("\n");
+
+      const otherText = [
+        productText,
+        "",
+        `${sequence}.${displayName}`,
+        formatOtherLabelLines(`${dateCode}${pad2(sequence)}`, phoneMap[code] || "（未识别到电话）", legacyOther)
+      ].join("\n");
+
+      return {
+        text: mode === "other" ? otherText : currentText,
+        warnings
+      };
+    }
+
+    function generate(options = {}) {
+      const rawText = el.input.value.trim();
+      const dateCode = (el.dateInput.value.trim() || getDateCode()).padStart(4, "0").slice(-4);
+      const start = Math.max(1, Math.trunc(el.startInput.valueAsNumber) || 1);
+      const fallbackCode = el.fallbackCode.value.trim();
+
+      if (!rawText) {
+        el.output.value = "";
+        sampleDraft = null;
+        if (!options.silent) {
+          setStatus(el.outputStatus, "粘贴内容后会实时显示结果。");
+        }
+        return;
+      }
+
+      const blocks = parseBlocks(rawText);
+      const results = [];
+      const warnings = [];
+
+      blocks.forEach((block, index) => {
+        const result = formatOne(block, start + index, dateCode, fallbackCode, activeSampleMode, el.otherLegacyEnabled.checked);
+        results.push(result.text);
+        warnings.push(...result.warnings);
+      });
+
+      el.output.value = results.join("\n\n————————————\n\n");
+      const labelText = getNingboLabelText();
+      if (labelText) el.output.value += `\n\n${labelText}`;
+      sampleDraft = { mode: activeSampleMode, dateCode, calendarDate: getLocalDateValue(), start, generatedText: el.output.value, copied: false, labelText };
+
+      const action = "已生成预览";
+      const message = warnings.length
+        ? `${action}。${warnings.join("；")}。`
+        : `${action}，共 ${blocks.length} 条。`;
+      if (!options.silent) {
+        setStatus(el.outputStatus, message, warnings.length > 0);
+      } else {
+        setStatus(el.outputStatus, warnings.length ? warnings.join("；") : "实时预览中，可直接编辑结果后复制。", warnings.length > 0);
+      }
+    }
+
+    function updatePreview() {
+      generate({ silent: true });
+    }
+
+    function setStatus(target, message, warn = false) {
+      target.textContent = message;
+      target.classList.toggle("warn", warn);
+    }
+
+    function validateNumberFields(container, status) {
+      const invalid = [...container.querySelectorAll('input[type="number"]')]
+        .find(input => !input.validity.valid || (input.value && !Number.isFinite(input.valueAsNumber)));
+      if (!invalid) return true;
+      setStatus(status, "数值无效，请检查标出的编号、数量或费用。编号未变。", true);
+      invalid.reportValidity();
+      return false;
+    }
+
+    async function writeClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        const buffer = document.createElement("textarea");
+        buffer.value = text;
+        buffer.style.cssText = "position:fixed;left:-9999px;top:0";
+        document.body.appendChild(buffer);
+        try {
+          buffer.select();
+          return document.execCommand("copy") === true;
+        } catch {
+          return false;
+        } finally {
+          buffer.remove();
+        }
+      }
+    }
+
+    async function copyWithCommit(text, status, commit) {
+      if (copyPending) return;
+      copyPending = true;
+      const app = document.querySelector(".app");
+      const focused = document.activeElement;
+      app.inert = true;
+      try {
+        if (!await writeClipboard(text)) {
+          setStatus(status, "复制失败，编号未变。请重试或手动复制。", true);
+          return;
+        }
+        commit();
+      } catch {
+        setStatus(status, "内容已复制，但编号未能保存。请确认浏览器允许本地存储后重试。", true);
+      } finally {
+        app.inert = false;
+        copyPending = false;
+        if (focused?.isConnected) focused.focus({ preventScroll: true });
+        refreshTodayIfNeeded();
+      }
+    }
+
+    async function copyAndAdvance() {
+      if (copyPending) return;
+      refreshTodayIfNeeded();
+      if (!validateNumberFields(el.sampleTool, el.outputStatus)) return;
+      if (!el.output.value.trim()) {
+        setStatus(el.outputStatus, "没有可复制的结果。", true);
+        return;
+      }
+      const dateCode = (el.dateInput.value.trim() || getDateCode()).padStart(4, "0").slice(-4);
+      const draft = sampleDraft || (sampleDraft = { mode: activeSampleMode, dateCode, calendarDate: getLocalDateValue(), start: Math.max(1, Math.trunc(el.startInput.valueAsNumber) || 1), copied: false });
+      await copyWithCommit(el.output.value, el.outputStatus, () => {
+        if (draft.copied) {
+          setStatus(el.outputStatus, "已再次复制，编号不变。");
+          return;
+        }
+        const nextIndex = draft.start + 1;
+        setState({ dateCode: draft.dateCode, calendarDate: draft.calendarDate, nextIndex }, draft.mode);
+        draft.copied = true;
+        lastCopyCheckpoint = { mode: draft.mode, dateCode: draft.dateCode, calendarDate: draft.calendarDate, previousIndex: draft.start };
+        if (sampleDraft === draft) {
+          el.startInput.value = nextIndex;
+          el.nextCode.textContent = pad2(nextIndex);
+          setStatus(el.outputStatus, `已复制，下一编号 ${pad2(nextIndex)}。`);
+        }
+        updateUndoButton();
+      });
+    }
+
+    function undoLastCopy() {
+      if (el.undoCopyBtn.disabled || !lastCopyCheckpoint) return;
+
+      const checkpoint = lastCopyCheckpoint;
+      setState({ dateCode: checkpoint.dateCode, calendarDate: checkpoint.calendarDate, nextIndex: checkpoint.previousIndex }, checkpoint.mode);
+      el.startInput.value = checkpoint.previousIndex;
+      el.nextCode.textContent = pad2(checkpoint.previousIndex);
+      lastCopyCheckpoint = null;
+      if (sampleDraft && el.output.value === sampleDraft.generatedText) {
+        updatePreview();
+      } else if (sampleDraft) {
+        sampleDraft.start = checkpoint.previousIndex;
+        sampleDraft.copied = false;
+      }
+      updateUndoButton();
+      setStatus(el.outputStatus, `已撤回，编号返回 ${pad2(checkpoint.previousIndex)}。`);
+    }
+
+    function renderMapping() {
+      el.mappingGrid.innerHTML = Object.entries(phoneMap)
+        .map(([code, phone]) => `<div class="map-item"><b>${code}</b><span>${phone}</span></div>`)
+        .join("");
+    }
+
+    function switchTool(tool) {
+      tool = tool === "sample" ? "ningbo" : tool;
+      if (tool === activeToolName) {
+        refreshTodayIfNeeded();
+        return;
+      }
+      activeToolName = tool;
+      const isArt = tool === "art";
+      const isBatch = tool === "batch";
+      const isOtherSample = tool === "other";
+      const isNingboSample = tool === "ningbo" || tool === "sample";
+      const isSample = isNingboSample || isOtherSample;
+
+      if (isSample) activeSampleMode = isOtherSample ? "other" : "ningbo";
+
+      el.sampleTool.classList.toggle("active", isSample);
+      el.artTool.classList.toggle("active", isArt);
+      el.batchTool.classList.toggle("active", isBatch);
+      el.sampleTab.classList.toggle("active", isNingboSample);
+      el.otherSampleTab.classList.toggle("active", isOtherSample);
+      el.artTab.classList.toggle("active", isArt);
+      el.batchTab.classList.toggle("active", isBatch);
+      el.sampleToday.style.display = isSample ? "" : "none";
+      el.pageTitle.textContent = isArt
+        ? "艺术板打样"
+        : isBatch
+          ? "批量样品下单"
+          : isOtherSample
+            ? "其他仓寄样"
+            : "宁波寄样";
+      el.pageSubtitle.textContent = isArt
+        ? "填写打样信息，自动计算片数、费用和连续编号。"
+        : isBatch
+          ? "选择产品规格并填写数量，自动汇总批量样品费用。"
+          : isOtherSample
+            ? "粘贴客户寄样信息，生成其他仓使用的日期和电话备注格式。"
+            : "粘贴客户寄样信息，生成宁波仓使用的数字备注格式。";
+
+      if (isSample) {
+        syncToday();
+        syncNumberPicker();
+        syncSampleLabelControls();
+        updateUndoButton();
+        updatePreview();
+      }
+
+      if (isArt) refreshArtTodayIfNeeded();
+      if (isBatch) refreshBatchMonthIfNeeded();
+
+      appStorage.setItem("activeSampleTool", tool);
+    }
+
+    function getArtDateCode() {
+      const value = el.artDate.value || getLocalDateValue();
+      const [, month = "01", day = "01"] = value.split("-");
+      return `${month}${day}`;
+    }
+
+    function getArtPeriod(date = new Date()) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+    }
+
+    function resolveArtSequence(state, now = new Date()) {
+      const today = getLocalDateValue(now);
+      const month = now.getMonth() + 1;
+      const period = getArtPeriod(now);
+      const monthChanged = state.period !== period;
+      const dayChanged = state.dailyDate !== today;
+
+      return {
+        today,
+        month,
+        period,
+        globalNo: Math.max(1, Number(state.orders?.[period] ?? (monthChanged ? 1 : state.nextGlobalNo)) || 1),
+        dailyNo: Math.max(1, Number(state.dailyOrders?.[today] ?? (dayChanged ? 1 : state.nextDailyNo)) || 1),
+        monthChanged,
+        dayChanged
+      };
+    }
+
+    function syncArtState() {
+      const now = new Date();
+      const state = getArtState();
+      const sequence = resolveArtSequence(state, now);
+
+      el.artMonth.value = sequence.month;
+      el.artGlobalNo.value = sequence.globalNo;
+      el.artDailyNo.value = sequence.dailyNo;
+      el.artDate.value = sequence.today;
+      artCalendarDay = sequence.today;
+      setArtState({
+        ...state,
+        month: sequence.month,
+        period: sequence.period,
+        nextGlobalNo: sequence.globalNo,
+        dailyDate: sequence.today,
+        nextDailyNo: sequence.dailyNo,
+        orders: { ...state.orders, [sequence.period]: sequence.globalNo },
+        dailyOrders: { ...state.dailyOrders, [sequence.today]: sequence.dailyNo }
+      });
+      updateArtPreview();
+    }
+
+    function refreshArtTodayIfNeeded() {
+      if (artCalendarDay === getLocalDateValue()) return;
+      syncArtState();
+    }
+
+    function loadArtDateSequence() {
+      const date = el.artDate.value || getLocalDateValue();
+      const state = getArtState();
+      el.artMonth.value = Number(date.slice(5, 7));
+      el.artGlobalNo.value = Math.max(1, Number(state.orders[date.slice(0, 7)]) || 1);
+      el.artDailyNo.value = Math.max(1, Number(state.dailyOrders[date]) || 1);
+      updateArtPreview();
+    }
+
+    function updateArtPreview() {
+      const month = Math.min(12, Math.max(1, Number(el.artMonth.value) || new Date().getMonth() + 1));
+      const globalNo = Math.max(1, Math.trunc(el.artGlobalNo.valueAsNumber) || 1);
+      const dailyNo = Math.max(1, Math.trunc(el.artDailyNo.valueAsNumber) || 1);
+      const colorCount = Math.max(1, Math.trunc(el.artColorCount.valueAsNumber) || 1);
+      const copiesPerColor = Math.max(1, Math.trunc(el.artCopiesPerColor.valueAsNumber) || 3);
+      const warehouseCopies = Math.min(1, copiesPerColor - 1);
+      const miaomiaoCopies = Math.max(0, copiesPerColor - 2);
+      const unitPrice = Math.max(0, Number(el.artUnitPrice.value) || 0);
+      const totalPieces = colorCount * copiesPerColor;
+      const totalFee = colorCount * unitPrice;
+      const project = el.artProject.value.trim() || "连锁";
+      const colors = el.artColors.value.trim();
+      const texture = el.artTexture.value.trim();
+      const time = el.artTime.value.trim() || "今天";
+
+      el.artOutput.value = [
+        `【艺术板打样-${month}-${String(globalNo).padStart(3, "0")}】`,
+        "",
+        `【${getArtDateCode()}${pad2(dailyNo)}打样-${colorCount}颜色】`,
+        `1.项目：${project}`,
+        `2.颜色：${colors}`,
+        `3.纹路：${texture}`,
+        `4.数量：200*200mm=${totalPieces}片（每一份客户1片 仓库${warehouseCopies}片 苗苗${miaomiaoCopies}个留底）`,
+        `5.时间：${time}`,
+        `6.费用：${Number.isInteger(totalFee) ? totalFee : totalFee.toFixed(2)}`
+      ].join("\n");
+
+      const date = el.artDate.value || getLocalDateValue();
+      artDraft = { date, month, period: `${date.slice(0, 4)}-${pad2(month)}`, globalNo, dailyNo, copied: false };
+
+      el.artStatus.textContent = `当前共 ${colorCount} 个颜色，${totalPieces} 片，费用 ${totalFee} 元。`;
+      el.artStatus.classList.remove("warn");
+    }
+
+    function clearArtContent() {
+      syncArtState();
+      el.artProject.value = "连锁";
+      el.artColors.value = "";
+      el.artTexture.value = "";
+      el.artTime.value = "今天";
+      el.artColorCount.value = "2";
+      el.artUnitPrice.value = "70";
+      el.artCopiesPerColor.value = "3";
+      updateArtPreview();
+      el.artColors.focus();
+    }
+
+    async function copyArtAndAdvance() {
+      if (copyPending) return;
+      refreshTodayIfNeeded();
+      if (!validateNumberFields(el.artTool, el.artStatus)) return;
+      const text = el.artOutput.value.trim();
+      if (!text) {
+        el.artStatus.textContent = "没有可复制的打样内容。";
+        el.artStatus.classList.add("warn");
+        return;
+      }
+
+      const draft = artDraft;
+      await copyWithCommit(text, el.artStatus, () => {
+        if (draft.copied) {
+          setStatus(el.artStatus, "已再次复制，编号不变。");
+          return;
+        }
+        const nextGlobalNo = draft.globalNo + 1;
+        const nextDailyNo = draft.dailyNo + 1;
+        const state = getArtState();
+        setArtState({
+          ...state,
+          month: draft.month,
+          period: draft.period,
+          nextGlobalNo,
+          dailyDate: draft.date,
+          nextDailyNo,
+          orders: { ...state.orders, [draft.period]: nextGlobalNo },
+          dailyOrders: { ...state.dailyOrders, [draft.date]: nextDailyNo }
+        });
+        draft.copied = true;
+        if (artDraft === draft) {
+          el.artGlobalNo.value = nextGlobalNo;
+          el.artDailyNo.value = nextDailyNo;
+          setStatus(el.artStatus, `已复制，下一打样编号 ${String(nextGlobalNo).padStart(3, "0")}，当天第 ${pad2(nextDailyNo)} 单。`);
+        }
+      });
+    }
+
+    function getBatchMonthKey(month) {
+      return `${new Date().getFullYear()}-${pad2(month)}`;
+    }
+
+    function createBatchSelect(options, selectedValue) {
+      const select = document.createElement("select");
+      options.forEach(optionValue => {
+        const option = document.createElement("option");
+        option.value = optionValue;
+        option.textContent = optionValue;
+        option.selected = optionValue === selectedValue;
+        select.appendChild(option);
+      });
+      return select;
+    }
+
+    function createBatchRow(product = "鎏金板", specification = "200*200mm", quantity = "") {
+      const row = document.createElement("div");
+      row.className = "product-row";
+
+      const productField = document.createElement("div");
+      productField.className = "field";
+      const productLabel = document.createElement("label");
+      productLabel.textContent = "产品";
+      const productSelect = createBatchSelect(Object.keys(batchCatalog), product);
+      productField.append(productLabel, productSelect);
+
+      const specField = document.createElement("div");
+      specField.className = "field";
+      const specLabel = document.createElement("label");
+      specLabel.textContent = "规格";
+      let specSelect = createBatchSelect(Object.keys(batchCatalog[product]), specification);
+      specField.append(specLabel, specSelect);
+
+      const quantityField = document.createElement("div");
+      quantityField.className = "field";
+      const quantityLabel = document.createElement("label");
+      const quantityInput = document.createElement("input");
+      quantityInput.type = "number";
+      quantityInput.min = "0";
+      quantityInput.step = "1";
+      quantityInput.placeholder = "数量";
+      quantityInput.value = quantity;
+      quantityField.append(quantityLabel, quantityInput);
+
+      const removeButton = document.createElement("button");
+      removeButton.className = "remove-row";
+      removeButton.type = "button";
+      removeButton.title = "删除产品";
+      removeButton.textContent = "×";
+
+      function refreshQuantityLabel() {
+        const price = batchCatalog[productSelect.value][specSelect.value];
+        quantityLabel.textContent = `数量（${price}元/片）`;
+      }
+
+      productSelect.addEventListener("change", () => {
+        const newSpecSelect = createBatchSelect(Object.keys(batchCatalog[productSelect.value]), Object.keys(batchCatalog[productSelect.value])[0]);
+        specSelect.replaceWith(newSpecSelect);
+        specSelect = newSpecSelect;
+        specSelect.addEventListener("change", () => {
+          refreshQuantityLabel();
+          updateBatchPreview();
+        });
+        refreshQuantityLabel();
+        updateBatchPreview();
+      });
+      specSelect.addEventListener("change", () => {
+        refreshQuantityLabel();
+        updateBatchPreview();
+      });
+      quantityInput.addEventListener("input", updateBatchPreview);
+      removeButton.addEventListener("click", () => {
+        row.remove();
+        updateBatchPreview();
+      });
+
+      row.append(productField, specField, quantityField, removeButton);
+      refreshQuantityLabel();
+      el.batchProductList.appendChild(row);
+    }
+
+    function resetBatchRows() {
+      el.batchProductList.innerHTML = "";
+      defaultBatchRows.forEach(([product, specification]) => {
+        createBatchRow(product, specification);
+      });
+      updateBatchPreview();
+    }
+
+    function getBatchEntries() {
+      return [...el.batchProductList.querySelectorAll(".product-row")]
+        .map(row => {
+          const selects = row.querySelectorAll("select");
+          const quantity = Math.max(0, Math.trunc(row.querySelector('input[type="number"]').valueAsNumber) || 0);
+          const product = selects[0].value;
+          const specification = selects[1].value;
+          const unitPrice = batchCatalog[product][specification];
+          return {
+            product,
+            specification,
+            quantity,
+            unitPrice,
+            amount: quantity * unitPrice
+          };
+        })
+        .filter(entry => entry.quantity > 0);
+    }
+
+    function formatBatchOrder(month, orderNo, entries) {
+      const lines = [`常规样品：MM-${month}-${String(orderNo).padStart(3, "0")}`];
+      if (!entries.length) return lines.join("\n");
+
+      lines.push("");
+      entries.forEach(entry => {
+        lines.push(`${entry.product} ${entry.specification} ${entry.quantity}*${entry.unitPrice}=${entry.amount}`);
+      });
+
+      const amounts = entries.map(entry => entry.amount);
+      const total = amounts.reduce((sum, amount) => sum + amount, 0);
+      lines.push(`总计：${amounts.length > 1 ? `${amounts.join("+")}=${total}` : total}`);
+      return lines.join("\n");
+    }
+
+    function updateBatchPreview() {
+      const month = Math.min(12, Math.max(1, Math.trunc(el.batchMonth.valueAsNumber) || new Date().getMonth() + 1));
+      const orderNo = Math.max(1, Math.trunc(el.batchOrderNo.valueAsNumber) || 1);
+      const entries = getBatchEntries();
+
+      if (entries.length) {
+        const amounts = entries.map(entry => entry.amount);
+        const total = amounts.reduce((sum, amount) => sum + amount, 0);
+        el.batchStatus.textContent = `已填写 ${entries.length} 项，总金额 ${total} 元。`;
+      } else {
+        el.batchStatus.textContent = "填写数量后，对应产品才会出现在右侧文本中。";
+      }
+
+      el.batchOutput.value = formatBatchOrder(month, orderNo, entries);
+      batchDraft = { month, key: getBatchMonthKey(month), orderNo, copied: false };
+      el.batchStatus.classList.remove("warn");
+    }
+
+    function syncBatchState() {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const state = getBatchState();
+      const key = getBatchMonthKey(month);
+      const storedNo = state.orders?.[key];
+      batchCalendarPeriod = getArtPeriod(now);
+      el.batchMonth.value = month;
+      el.batchOrderNo.value = Math.max(1, Number(storedNo) || 1);
+      updateBatchPreview();
+    }
+
+    function refreshBatchMonthIfNeeded() {
+      if (batchCalendarPeriod !== getArtPeriod()) syncBatchState();
+    }
+
+    function clearBatchQuantities() {
+      el.batchProductList.querySelectorAll('input[type="number"]').forEach(input => {
+        input.value = "";
+      });
+      updateBatchPreview();
+    }
+
+    async function copyBatchAndAdvance() {
+      if (copyPending) return;
+      refreshTodayIfNeeded();
+      if (!validateNumberFields(el.batchTool, el.batchStatus)) return;
+      const text = el.batchOutput.value.trim();
+      const entries = getBatchEntries();
+      if (!entries.length || !text) {
+        el.batchStatus.textContent = !text ? "没有可复制的下单内容。" : "请至少填写一个产品数量。";
+        el.batchStatus.classList.add("warn");
+        return;
+      }
+
+      const draft = batchDraft;
+      await copyWithCommit(text, el.batchStatus, () => {
+        if (draft.copied) {
+          setStatus(el.batchStatus, "已再次复制，编号不变。");
+          return;
+        }
+        const nextOrderNo = draft.orderNo + 1;
+        const state = getBatchState();
+        setBatchState({ ...state, orders: { ...state.orders, [draft.key]: nextOrderNo } });
+        draft.copied = true;
+        if (batchDraft === draft) {
+          el.batchOrderNo.value = nextOrderNo;
+          setStatus(el.batchStatus, `已复制，下一打样单号 ${String(nextOrderNo).padStart(3, "0")}。`);
+        }
+      });
+    }
+
+    function clearAll() {
+      el.input.value = "";
+      el.output.value = "";
+      sampleDraft = null;
+      el.fallbackCode.value = "195";
+      syncNumberPicker();
+      if (activeSampleMode === "ningbo") resetNingboLabels();
+      if (activeSampleMode === "other") el.otherLegacyEnabled.checked = false;
+      setStatus(el.outputStatus, `已清空，编号保持 ${pad2(Math.max(1, Math.trunc(el.startInput.valueAsNumber) || 1))}。`);
+      el.input.focus();
+    }
+
+    el.clearBtn.addEventListener("click", clearAll);
+    el.undoCopyBtn.addEventListener("click", undoLastCopy);
+    el.commitBtn.addEventListener("click", copyAndAdvance);
+    el.ningboLabelEnabled.addEventListener("change", updateNingboLabelPreview);
+    el.ningboLabelChoices.forEach(input => input.addEventListener("change", updateNingboLabelPreview));
+    el.otherLegacyEnabled.addEventListener("change", updateOtherFormatPreview);
+    el.input.addEventListener("input", updatePreview);
+    el.dateInput.addEventListener("input", () => {
+      el.dateInput.value = el.dateInput.value.replace(/\D/g, "").slice(0, 4);
+      updatePreview();
+    });
+    el.startInput.addEventListener("input", () => {
+      el.nextCode.textContent = pad2(Math.max(1, Math.trunc(el.startInput.valueAsNumber) || 1));
+      updatePreview();
+    });
+    el.numberChoices.forEach(input => input.addEventListener("change", () => {
+      el.fallbackCode.value = input.value;
+      syncNumberPicker();
+      updatePreview();
+    }));
+    el.dateInput.addEventListener("input", () => {
+      updateUndoButton();
+    });
+    el.sampleTab.addEventListener("click", () => switchTool("ningbo"));
+    el.otherSampleTab.addEventListener("click", () => switchTool("other"));
+    el.artTab.addEventListener("click", () => switchTool("art"));
+    el.batchTab.addEventListener("click", () => switchTool("batch"));
+    el.artClearBtn.addEventListener("click", clearArtContent);
+    el.artCopyBtn.addEventListener("click", copyArtAndAdvance);
+    el.batchAddBtn.addEventListener("click", () => {
+      createBatchRow();
+      updateBatchPreview();
+    });
+    el.batchClearBtn.addEventListener("click", clearBatchQuantities);
+    el.batchCopyBtn.addEventListener("click", copyBatchAndAdvance);
+    el.batchOrderNo.addEventListener("input", updateBatchPreview);
+    el.batchMonth.addEventListener("input", () => {
+      const month = Math.min(12, Math.max(1, Math.trunc(el.batchMonth.valueAsNumber) || new Date().getMonth() + 1));
+      const state = getBatchState();
+      el.batchOrderNo.value = Math.max(1, Number(state.orders?.[getBatchMonthKey(month)]) || 1);
+      updateBatchPreview();
+    });
+
+    [
+      el.artGlobalNo,
+      el.artDailyNo,
+      el.artColorCount,
+      el.artProject,
+      el.artColors,
+      el.artTexture,
+      el.artTime,
+      el.artUnitPrice,
+      el.artCopiesPerColor
+    ].forEach(input => input.addEventListener("input", updateArtPreview));
+
+    el.artMonth.addEventListener("input", () => {
+      const state = getArtState();
+      const year = (el.artDate.value || getLocalDateValue()).slice(0, 4);
+      const month = Math.min(12, Math.max(1, Number(el.artMonth.value) || new Date().getMonth() + 1));
+      el.artGlobalNo.value = Math.max(1, Number(state.orders[`${year}-${pad2(month)}`]) || 1);
+      updateArtPreview();
+    });
+    el.artDate.addEventListener("input", loadArtDateSequence);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshTodayIfNeeded();
+    });
+    window.addEventListener("focus", refreshTodayIfNeeded);
+    window.addEventListener("pageshow", refreshTodayIfNeeded);
+    scheduleMorningCheck();
+
+    renderMapping();
+    resetNingboLabels();
+    syncToday();
+    updatePreview();
+    syncArtState();
+    syncBatchState();
+    resetBatchRows();
+    const activeTool = appStorage.getItem("activeSampleTool");
+    switchTool(["ningbo", "other", "art", "batch"].includes(activeTool) ? activeTool : "ningbo");
+  </script>
+</body>
+</html>
