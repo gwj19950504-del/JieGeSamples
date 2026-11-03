@@ -277,6 +277,37 @@
       white-space: pre-wrap;
     }
 
+    #outputHighlights {
+      position: absolute;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      color: var(--ink);
+      pointer-events: none;
+    }
+
+    #outputHighlights[hidden] {
+      display: none;
+    }
+
+    #outputHighlights .replacement-mark {
+      color: #d70015;
+    }
+
+    #output.has-highlights {
+      position: relative;
+      background: transparent;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      caret-color: var(--ink);
+    }
+
+    #output.has-highlights::selection {
+      background: rgba(0, 122, 255, .2);
+    }
+
     .status {
       min-height: 42px;
       padding: 11px 16px;
@@ -1162,7 +1193,8 @@
           </div>
         </div>
         <div class="output-wrap">
-          <textarea id="output" placeholder="转换后的内容会显示在这里，也可以手动编辑"></textarea>
+          <div id="outputHighlights" aria-hidden="true" hidden></div>
+          <textarea id="output" aria-label="转换结果" spellcheck="false" placeholder="转换后的内容会显示在这里，也可以手动编辑"></textarea>
         </div>
         <div class="status" id="outputStatus">左侧内容变化会实时显示；复制后会记录下一个编号。</div>
         </section>
@@ -1362,6 +1394,7 @@
       otherLegacyEnabled: document.querySelector("#otherLegacyEnabled"),
       input: document.querySelector("#input"),
       output: document.querySelector("#output"),
+      outputHighlights: document.querySelector("#outputHighlights"),
       inputStatus: document.querySelector("#inputStatus"),
       outputStatus: document.querySelector("#outputStatus"),
       mappingGrid: document.querySelector("#mappingGrid"),
@@ -1419,6 +1452,8 @@
     let activeToolName = null;
     let lastCopyCheckpoint = null;
     let sampleDraft = null;
+    let outputReplacementRanges = [];
+    let outputHighlightText = "";
     let artDraft = null;
     let batchDraft = null;
     let copyPending = false;
@@ -1448,6 +1483,16 @@
       syncSampleLabelControls();
     }
 
+    function extractNingboStore(rawText) {
+      const stores = new Set();
+      for (const line of rawText.split(/\r?\n/u)) {
+        const match = line.match(/^\s*(?:店铺名称|门店名称|店铺|门店|店名)\s*[:：]\s*(.*?)\s*$/u);
+        if (match && match[1]) stores.add(match[1]);
+      }
+      // One label cannot safely choose between conflicting store names.
+      return stores.size === 1 ? [...stores][0] : "";
+    }
+
     function getNingboLabelText() {
       if (activeSampleMode !== "ningbo" || !el.ningboLabelEnabled.checked) return "";
       const selected = [...el.ningboLabelChoices].find(input => input.checked);
@@ -1455,7 +1500,7 @@
       if (!template) return "";
 
       const lines = ["【都需要打标签】", `品牌：${template.brand}`];
-      if (template.address) lines.push("地址：");
+      if (template.address) lines.push(`地址：${extractNingboStore(el.input.value)}`);
       lines.push("联系：张苗苗", `电话：${phoneMap[el.fallbackCode.value]}`);
       return lines.join("\n");
     }
@@ -1477,6 +1522,7 @@
       }
       const labelText = getNingboLabelText();
       el.output.value = labelText ? `${text}\n\n${labelText}` : text;
+      refreshOutputHighlights();
       sampleDraft.labelText = labelText;
       if (wasGenerated) sampleDraft.generatedText = el.output.value;
       setStatus(el.outputStatus, labelText ? "标签已更新。" : "未添加标签。");
@@ -1506,6 +1552,7 @@
           return formatOtherLabelLines(dateSequence, phone, el.otherLegacyEnabled.checked);
         }
       );
+      refreshOutputHighlights();
       if (wasGenerated) sampleDraft.generatedText = el.output.value;
       setStatus(el.outputStatus, replaced
         ? (el.otherLegacyEnabled.checked ? "已切换为原来版本，编号不变。" : "已切换为默认版本，编号不变。")
@@ -2166,11 +2213,99 @@
         .filter(block => block.some(line => line.trim()));
     }
 
+    function normalizeSampleProducts(text) {
+      const replacements = {
+        "陨洞斑驳": "大虫洞做旧",
+        "陨洞精品": "大虫洞不做旧",
+        "虫洞斑驳": "虫洞做旧",
+        "灰砂": "斑驳色",
+        "和清水泥": "水泥墙",
+        "陨洞": "大虫洞"
+      };
+      const ranges = [];
+      let delta = 0;
+      // Match longer names first and never re-process replacement text.
+      const normalized = text.replace(/陨洞斑驳|陨洞精品|虫洞斑驳|灰砂|和清水泥|陨洞/gu, (source, offset) => {
+        const replacement = replacements[source];
+        const start = offset + delta;
+        ranges.push({ start, end: start + replacement.length, source, replacement });
+        delta += replacement.length - source.length;
+        return replacement;
+      });
+      return { text: normalized, ranges };
+    }
+
+    function syncOutputHighlightScroll() {
+      el.outputHighlights.scrollTop = el.output.scrollTop;
+      el.outputHighlights.scrollLeft = el.output.scrollLeft;
+    }
+
+    function syncOutputHighlightLayout() {
+      if (el.outputHighlights.hidden) return;
+      const styles = getComputedStyle(el.output);
+      for (const name of ["font", "letterSpacing", "lineHeight", "padding", "textAlign", "textIndent", "tabSize", "wordBreak", "overflowWrap"]) {
+        el.outputHighlights.style[name] = styles[name];
+      }
+      el.outputHighlights.style.width = `${el.output.clientWidth}px`;
+      el.outputHighlights.style.height = `${el.output.clientHeight}px`;
+      syncOutputHighlightScroll();
+    }
+
+    function renderOutputHighlights() {
+      const text = el.output.value;
+      const hasHighlights = outputReplacementRanges.length > 0;
+      el.output.classList.toggle("has-highlights", hasHighlights);
+      el.outputHighlights.hidden = !hasHighlights;
+      const content = document.createDocumentFragment();
+      let cursor = 0;
+      for (const range of outputReplacementRanges) {
+        content.append(document.createTextNode(text.slice(cursor, range.start)));
+        const mark = document.createElement("span");
+        mark.className = "replacement-mark";
+        mark.textContent = text.slice(range.start, range.end);
+        content.append(mark);
+        cursor = range.end;
+      }
+      content.append(document.createTextNode(text.slice(cursor)));
+      if (text.endsWith("\n")) content.append(document.createTextNode("\u200b"));
+      el.outputHighlights.replaceChildren(content);
+      syncOutputHighlightLayout();
+    }
+
+    function setSampleOutput(text, ranges = []) {
+      el.output.value = text;
+      outputHighlightText = text;
+      outputReplacementRanges = ranges;
+      renderOutputHighlights();
+    }
+
+    function refreshOutputHighlights() {
+      const text = el.output.value;
+      if (text !== outputHighlightText) {
+        let prefix = 0;
+        let suffix = 0;
+        while (prefix < text.length && prefix < outputHighlightText.length && text[prefix] === outputHighlightText[prefix]) prefix++;
+        while (suffix < text.length - prefix && suffix < outputHighlightText.length - prefix
+          && text[text.length - 1 - suffix] === outputHighlightText[outputHighlightText.length - 1 - suffix]) suffix++;
+        const oldEnd = outputHighlightText.length - suffix;
+        const delta = text.length - outputHighlightText.length;
+        // Manual edits retain unaffected marks; edited replacement spans lose their mark.
+        outputReplacementRanges = outputReplacementRanges.flatMap(range => {
+          if (range.end <= prefix) return [range];
+          if (range.start >= oldEnd) return [{ ...range, start: range.start + delta, end: range.end + delta }];
+          return [];
+        });
+        outputHighlightText = text;
+      }
+      renderOutputHighlights();
+    }
+
     function formatOne(block, sequence, dateCode, fallbackCode, mode = "ningbo", legacyOther = false) {
       const customer = extractCustomer(block);
       const name = customer.name;
       const code = extractCode(block, fallbackCode);
-      const products = extractProducts(block, customer);
+      const normalizedProducts = normalizeSampleProducts(extractProducts(block, customer));
+      const products = normalizedProducts.text;
       const sourceSerial = extractCustomerSourceSerial(block, customer);
       const displayName = formatCustomerName(name, code, sourceSerial);
       const displayCode = code || "（未填写默认数字）";
@@ -2199,6 +2334,7 @@
 
       return {
         text: mode === "other" ? otherText : currentText,
+        replacementRanges: normalizedProducts.ranges,
         warnings
       };
     }
@@ -2210,7 +2346,7 @@
       const fallbackCode = el.fallbackCode.value.trim();
 
       if (!rawText) {
-        el.output.value = "";
+        setSampleOutput("");
         sampleDraft = null;
         if (!options.silent) {
           setStatus(el.outputStatus, "粘贴内容后会实时显示结果。");
@@ -2221,16 +2357,23 @@
       const blocks = parseBlocks(rawText);
       const results = [];
       const warnings = [];
+      const replacementRanges = [];
+      const separator = "\n\n————————————\n\n";
+      let outputLength = 0;
 
       blocks.forEach((block, index) => {
         const result = formatOne(block, start + index, dateCode, fallbackCode, activeSampleMode, el.otherLegacyEnabled.checked);
+        const offset = outputLength + (index > 0 ? separator.length : 0);
+        replacementRanges.push(...result.replacementRanges.map(range => ({ ...range, start: range.start + offset, end: range.end + offset })));
         results.push(result.text);
+        outputLength = offset + result.text.length;
         warnings.push(...result.warnings);
       });
 
-      el.output.value = results.join("\n\n————————————\n\n");
+      let outputText = results.join(separator);
       const labelText = getNingboLabelText();
-      if (labelText) el.output.value += `\n\n${labelText}`;
+      if (labelText) outputText += `\n\n${labelText}`;
+      setSampleOutput(outputText, replacementRanges);
       sampleDraft = { mode: activeSampleMode, dateCode, calendarDate: getLocalDateValue(), start, generatedText: el.output.value, copied: false, labelText };
 
       const action = "已生成预览";
@@ -2756,7 +2899,7 @@
 
     function clearAll() {
       el.input.value = "";
-      el.output.value = "";
+      setSampleOutput("");
       sampleDraft = null;
       el.fallbackCode.value = "195";
       syncNumberPicker();
@@ -2773,6 +2916,12 @@
     el.ningboLabelChoices.forEach(input => input.addEventListener("change", updateNingboLabelPreview));
     el.otherLegacyEnabled.addEventListener("change", updateOtherFormatPreview);
     el.input.addEventListener("input", updatePreview);
+    el.output.addEventListener("input", refreshOutputHighlights);
+    el.output.addEventListener("scroll", syncOutputHighlightScroll);
+    window.addEventListener("resize", syncOutputHighlightLayout);
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(syncOutputHighlightLayout).observe(el.output);
+    }
     el.dateInput.addEventListener("input", () => {
       el.dateInput.value = el.dateInput.value.replace(/\D/g, "").slice(0, 4);
       updatePreview();
