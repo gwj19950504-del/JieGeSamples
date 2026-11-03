@@ -1104,6 +1104,52 @@
         width: 100%;
       }
     }
+    .input-actions { display: none; }
+
+    button[data-feedback="pending"] { opacity: .7; }
+    button[data-feedback="success"], button[data-feedback="success"]:hover {
+      background: #238346;
+      color: #fff;
+      animation: clipboard-confirm .25s ease-out;
+    }
+    button[data-feedback="error"], button[data-feedback="error"]:hover {
+      background: #b42318;
+      color: #fff;
+    }
+    @keyframes clipboard-confirm {
+      from { transform: scale(.96); }
+      to { transform: scale(1); }
+    }
+    .clipboard-notice {
+      position: fixed;
+      z-index: 20;
+      bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100% - 32px);
+      padding: 12px 18px;
+      border-radius: 8px;
+      background: #202124;
+      color: #fff;
+      font-size: 15px;
+      line-height: 1.5;
+      pointer-events: none;
+      box-shadow: 0 3px 12px #0003;
+    }
+    .clipboard-notice:empty { display: none; }
+    @media (max-width: 720px), (pointer: coarse) {
+      .input-actions { display: flex; justify-content: flex-end; padding: 8px 16px; }
+      .input-actions button { width: 132px; color: var(--accent-strong); }
+      .input-actions button[data-feedback="success"],
+      .input-actions button[data-feedback="error"] { color: #fff; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button[data-feedback] { animation: none; }
+    }
+    @media (max-width: 420px) {
+      .copy-actions { grid-template-columns: 56px minmax(96px, 1fr); width: 160px; flex-shrink: 0; }
+    }
   </style>
 </head>
 <body>
@@ -1170,6 +1216,9 @@
             <label><input type="radio" name="ningboLabelTemplate" value="peets">Peet'S（无地址）</label>
             <label><input type="radio" name="ningboLabelTemplate" value="blank">空白品牌</label>
           </div>
+        </div>
+        <div class="input-actions">
+          <button id="pasteBtn" type="button" title="从剪贴板粘贴寄样信息">粘贴</button>
         </div>
         <textarea id="input" spellcheck="false" placeholder="例如：
 【信息】
@@ -1319,6 +1368,8 @@
     </div>
   </main>
 
+  <div class="clipboard-notice" id="clipboardNotice" role="status" aria-live="polite" aria-atomic="true"></div>
+
   <script>
     // Project Pages share an origin, so keep this site's counters independent.
     const appStorage = {
@@ -1399,6 +1450,8 @@
       outputStatus: document.querySelector("#outputStatus"),
       mappingGrid: document.querySelector("#mappingGrid"),
       clearBtn: document.querySelector("#clearBtn"),
+      pasteBtn: document.querySelector("#pasteBtn"),
+      clipboardNotice: document.querySelector("#clipboardNotice"),
       undoCopyBtn: document.querySelector("#undoCopyBtn"),
       commitBtn: document.querySelector("#commitBtn"),
       pageTitle: document.querySelector("#pageTitle"),
@@ -1457,6 +1510,12 @@
     let artDraft = null;
     let batchDraft = null;
     let copyPending = false;
+    let pastePending = false;
+    let manualSampleCode = "";
+    let sampleInputName = "";
+    let sampleInputRevision = 0;
+    let noticeTimer;
+    const feedbackTimers = new WeakMap();
     let sampleCalendarDay = getLocalDateValue();
     let artCalendarDay = getLocalDateValue();
     let batchCalendarPeriod = getArtPeriod();
@@ -2128,7 +2187,8 @@
       return extractCustomer(lines).name;
     }
 
-    function extractCode(lines, fallbackCode) {
+    function extractCode(lines, fallbackCode, manualCode = "") {
+      if (phoneMap[manualCode]) return manualCode;
       for (const line of lines) {
         const match = line.match(/(?:数字|电话编码|编码)\s*[:：]?\s*(1995|195|134|187|199|135)\b/u);
         if (match) return match[1];
@@ -2139,7 +2199,10 @@
         if (phoneMap[line]) return line;
       }
 
-      return phoneMap[fallbackCode] ? fallbackCode : "";
+      const name = extractCustomer(lines).name;
+      const marker = name.match(/[^\d]([1-6])$/u)?.[1];
+      const matchedCode = Object.keys(customerNumberMap).find(code => customerNumberMap[code] === marker);
+      return matchedCode || (phoneMap[fallbackCode] ? fallbackCode : "");
     }
 
     function extractCustomerSourceSerial(lines, customer = extractCustomer(lines)) {
@@ -2300,10 +2363,10 @@
       renderOutputHighlights();
     }
 
-    function formatOne(block, sequence, dateCode, fallbackCode, mode = "ningbo", legacyOther = false) {
+    function formatOne(block, sequence, dateCode, fallbackCode, mode = "ningbo", legacyOther = false, manualCode = "") {
       const customer = extractCustomer(block);
       const name = customer.name;
-      const code = extractCode(block, fallbackCode);
+      const code = extractCode(block, fallbackCode, manualCode);
       const normalizedProducts = normalizeSampleProducts(extractProducts(block, customer));
       const products = normalizedProducts.text;
       const sourceSerial = extractCustomerSourceSerial(block, customer);
@@ -2355,6 +2418,8 @@
       }
 
       const blocks = parseBlocks(rawText);
+      if (blocks.length) el.fallbackCode.value = extractCode(blocks[0], fallbackCode, manualSampleCode);
+      syncNumberPicker();
       const results = [];
       const warnings = [];
       const replacementRanges = [];
@@ -2362,7 +2427,7 @@
       let outputLength = 0;
 
       blocks.forEach((block, index) => {
-        const result = formatOne(block, start + index, dateCode, fallbackCode, activeSampleMode, el.otherLegacyEnabled.checked);
+        const result = formatOne(block, start + index, dateCode, fallbackCode, activeSampleMode, el.otherLegacyEnabled.checked, manualSampleCode);
         const offset = outputLength + (index > 0 ? separator.length : 0);
         replacementRanges.push(...result.replacementRanges.map(range => ({ ...range, start: range.start + offset, end: range.end + offset })));
         results.push(result.text);
@@ -2389,6 +2454,66 @@
 
     function updatePreview() {
       generate({ silent: true });
+    }
+
+    function handleSampleInput(event) {
+      sampleInputRevision++;
+      const block = parseBlocks(el.input.value)[0];
+      const name = block ? extractCustomer(block).name : "";
+      if (event?.inputType === "insertFromPaste" || name !== sampleInputName || !block) manualSampleCode = "";
+      sampleInputName = name;
+      updatePreview();
+    }
+
+    function showClipboardNotice(message) {
+      clearTimeout(noticeTimer);
+      el.clipboardNotice.textContent = message;
+      noticeTimer = setTimeout(() => { el.clipboardNotice.textContent = ""; }, 2600);
+    }
+
+    function setClipboardFeedback(button, state, message) {
+      clearTimeout(feedbackTimers.get(button));
+      button.dataset.feedback = state;
+      button.textContent = message;
+      button.setAttribute("aria-busy", String(state === "pending"));
+      if (state !== "pending") {
+        feedbackTimers.set(button, setTimeout(() => {
+          delete button.dataset.feedback;
+          button.textContent = button === el.pasteBtn ? "粘贴" : "复制";
+        }, 2000));
+      }
+    }
+
+    async function pasteSampleInput() {
+      if (pastePending || copyPending) return;
+      const revision = sampleInputRevision;
+      const original = el.input.value;
+      pastePending = true;
+      setClipboardFeedback(el.pasteBtn, "pending", "粘贴中");
+      try {
+        const text = await navigator.clipboard.readText();
+        if (revision !== sampleInputRevision || original !== el.input.value) {
+          setClipboardFeedback(el.pasteBtn, "error", "重新粘贴");
+          showClipboardNotice("输入内容已变化，请重新点击粘贴。");
+          return;
+        }
+        if (!text.trim()) {
+          setClipboardFeedback(el.pasteBtn, "error", "无文字");
+          showClipboardNotice("剪贴板没有文字，原内容未变。");
+          return;
+        }
+        el.input.value = text;
+        handleSampleInput({ inputType: "insertFromPaste" });
+        el.input.scrollTop = 0;
+        setClipboardFeedback(el.pasteBtn, "success", "已粘贴");
+        showClipboardNotice("已粘贴");
+      } catch {
+        setClipboardFeedback(el.pasteBtn, "error", "未能粘贴");
+        showClipboardNotice("无法读取剪贴板，请允许粘贴，或长按输入框粘贴。");
+        el.input.focus({ preventScroll: true });
+      } finally {
+        pastePending = false;
+      }
     }
 
     function setStatus(target, message, warn = false) {
@@ -2425,20 +2550,27 @@
       }
     }
 
-    async function copyWithCommit(text, status, commit) {
-      if (copyPending) return;
+    async function copyWithCommit(text, status, commit, button) {
+      if (copyPending || pastePending) return;
       copyPending = true;
       const app = document.querySelector(".app");
       const focused = document.activeElement;
+      setClipboardFeedback(button, "pending", "复制中");
       app.inert = true;
       try {
         if (!await writeClipboard(text)) {
           setStatus(status, "复制失败，编号未变。请重试或手动复制。", true);
+          setClipboardFeedback(button, "error", "复制失败");
+          showClipboardNotice("复制失败，编号未变。");
           return;
         }
         commit();
+        setClipboardFeedback(button, "success", "已复制");
+        showClipboardNotice("已复制");
       } catch {
         setStatus(status, "内容已复制，但编号未能保存。请确认浏览器允许本地存储后重试。", true);
+        setClipboardFeedback(button, "error", "保存失败");
+        showClipboardNotice("已复制，但编号未保存，请核对。");
       } finally {
         app.inert = false;
         copyPending = false;
@@ -2472,7 +2604,7 @@
           setStatus(el.outputStatus, `已复制，下一编号 ${pad2(nextIndex)}。`);
         }
         updateUndoButton();
-      });
+      }, el.commitBtn);
     }
 
     function undoLastCopy() {
@@ -2700,7 +2832,7 @@
           el.artDailyNo.value = nextDailyNo;
           setStatus(el.artStatus, `已复制，下一打样编号 ${String(nextGlobalNo).padStart(3, "0")}，当天第 ${pad2(nextDailyNo)} 单。`);
         }
-      });
+      }, el.artCopyBtn);
     }
 
     function getBatchMonthKey(month) {
@@ -2894,10 +3026,13 @@
           el.batchOrderNo.value = nextOrderNo;
           setStatus(el.batchStatus, `已复制，下一打样单号 ${String(nextOrderNo).padStart(3, "0")}。`);
         }
-      });
+      }, el.batchCopyBtn);
     }
 
     function clearAll() {
+      sampleInputRevision++;
+      manualSampleCode = "";
+      sampleInputName = "";
       el.input.value = "";
       setSampleOutput("");
       sampleDraft = null;
@@ -2910,12 +3045,14 @@
     }
 
     el.clearBtn.addEventListener("click", clearAll);
+    el.pasteBtn.addEventListener("click", pasteSampleInput);
     el.undoCopyBtn.addEventListener("click", undoLastCopy);
     el.commitBtn.addEventListener("click", copyAndAdvance);
     el.ningboLabelEnabled.addEventListener("change", updateNingboLabelPreview);
     el.ningboLabelChoices.forEach(input => input.addEventListener("change", updateNingboLabelPreview));
     el.otherLegacyEnabled.addEventListener("change", updateOtherFormatPreview);
-    el.input.addEventListener("input", updatePreview);
+    el.input.addEventListener("input", handleSampleInput);
+    el.input.addEventListener("paste", () => { manualSampleCode = ""; });
     el.output.addEventListener("input", refreshOutputHighlights);
     el.output.addEventListener("scroll", syncOutputHighlightScroll);
     window.addEventListener("resize", syncOutputHighlightLayout);
@@ -2931,6 +3068,7 @@
       updatePreview();
     });
     el.numberChoices.forEach(input => input.addEventListener("change", () => {
+      manualSampleCode = input.value;
       el.fallbackCode.value = input.value;
       syncNumberPicker();
       updatePreview();
