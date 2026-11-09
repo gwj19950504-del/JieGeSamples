@@ -1858,11 +1858,16 @@
       return /(快递|物流|优先发|优选发|请发|请走|请用|送货|配送|到付|代收|谢谢)/u.test(String(value || ''));
     }
 
-    function isValidName(value) {
-      const blocked = new Set(["收", "收货", "电话", "手机", "手机号码", "地址"]);
+    function isValidName(value, { allowDongSuffix = false } = {}) {
+      const blocked = new Set(["收", "收货", "电话", "手机", "手机号", "手机号码", "地址", "详细地址", "收货地址"]);
+      const addressEnding = /(省|市|区|县|镇|街|路|道|号|栋|幢|楼|室|座|苑|园|里|村|店|酒店|公司|馆)$/u.test(value);
+      // A short, confirmed contact name can end in 栋, unlike an address block number.
+      const contactNameEnding = allowDongSuffix
+        && /^[\u4e00-\u9fa5]{1,3}栋$/u.test(value)
+        && !/^第?[零〇一二两三四五六七八九十百]+栋$/u.test(value);
       return !blocked.has(value)
         && !isDeliveryInstruction(value)
-        && !/(省|市|区|县|镇|街|路|道|号|栋|幢|楼|室|座|苑|园|里|村|店|酒店|公司|馆)$/u.test(value)
+        && (!addressEnding || contactNameEnding)
         && /^[\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·._-]{0,9}$/u.test(value);
     }
 
@@ -1952,6 +1957,7 @@
         if (!hasPhone(line)) continue;
 
         const afterPhone = getTextAfterPhone(line)
+          .replace(/^\s*(?:[-－]|转|分机\s*[:：]?)\s*\d{1,6}(?=$|[\s,，;；:：。．、.】])/u, "")
           .replace(/^[\s,，;；:：。．、.]+/u, "")
           .trim();
         if (!afterPhone) continue;
@@ -2000,7 +2006,7 @@
         if (!/^\d{6,15}$/u.test(phone.replace(/[\s()+-]/g, "")) || !isAddressLike(address)) continue;
 
         const name = normalizeName(candidate, { allowTail: false });
-        if (isValidName(name) && !isAddressLike(name)) return { index, name };
+        if (isValidName(name, { allowDongSuffix: true }) && !isAddressLike(name)) return { index, name };
       }
 
       return null;
@@ -2138,12 +2144,13 @@
     }
 
     function extractCustomer(lines) {
+      lines = lines.map(line => line.replace(/(?:[【[（(]\s*|^\s*)配送拨打\s*[:：].*$/u, ""));
       for (const [index, line] of lines.entries()) {
         const matches = cleanLine(line).matchAll(/(?:收货人|收件人|联系人|姓名)\s*[:：]?\s*([^\s,，；;]+)/gu);
         for (const match of matches) {
           // A mislabeled address must not become a name by truncating its tail.
           const name = normalizeName(match[1], { allowTail: false });
-          if (isValidName(name)) return { index, name };
+          if (isValidName(name, { allowDongSuffix: true })) return { index, name };
         }
       }
 
@@ -2331,9 +2338,16 @@
       return [text.replace(/\r/g, "").split("\n")];
     }
 
+    function splitContactSampleNote(line) {
+      const noteStart = line.search(/苗苗\s*[-－]\s*样品(?:\s*[（(]\s*[A-Za-z]+\s*[）)])?\s*[:：]/u);
+      if (noteStart <= 0) return [line];
+      const contact = line.slice(0, noteStart);
+      return isCustomerInfoLine(contact) ? [contact, line.slice(noteStart)] : [line];
+    }
+
     function parseBlocks(rawText) {
       return splitBlocks(rawText)
-        .map(block => block.map(line => line.trim()).filter(line => !isNoiseLine(line)))
+        .map(block => block.flatMap(splitContactSampleNote).map(line => line.trim()).filter(line => !isNoiseLine(line)))
         .filter(block => block.some(line => line.trim()));
     }
 
