@@ -701,8 +701,9 @@
 
     .copy-actions {
       display: grid;
-      grid-template-columns: 92px minmax(150px, 1fr);
+      grid-template-columns: 92px minmax(0, 1fr);
       width: min(360px, 55%);
+      min-width: 0;
     }
 
     .section-title {
@@ -946,6 +947,16 @@
       }
     }
 
+    @media (min-width: 861px) and (max-width: 980px) {
+      .product-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .remove-row {
+        justify-self: end;
+      }
+    }
+
     @media (max-width: 980px) {
       .app {
         width: min(100vw - 28px, 1440px);
@@ -954,6 +965,22 @@
 
       header {
         grid-template-columns: 1fr 190px;
+      }
+
+      header .tool-tabs {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+      }
+
+      .tool-tab {
+        flex: 1;
+      }
+    }
+
+    @media (min-width: 981px) and (max-width: 1120px) {
+      header {
+        grid-template-columns: minmax(0, 1fr) 190px;
       }
 
       header .tool-tabs {
@@ -1085,6 +1112,14 @@
     }
 
     @media (max-width: 420px) {
+      .section-head {
+        flex-wrap: wrap;
+      }
+
+      .section-head > .toolbar {
+        margin-left: auto;
+      }
+
       .inline-fields,
       .art-fields,
       .batch-controls {
@@ -1575,12 +1610,29 @@
       // Update only the label block so copied order numbers and edited body text stay intact.
       const wasGenerated = el.output.value === sampleDraft.generatedText;
       let text = el.output.value;
-      if (sampleDraft.labelText) {
-        const labelStart = text.lastIndexOf("\n\n【都需要打标签】\n");
-        if (labelStart >= 0) text = text.slice(0, labelStart);
-      }
       const labelText = getNingboLabelText();
-      el.output.value = labelText ? `${text}\n\n${labelText}` : text;
+      let replaced = false;
+      if (sampleDraft.labelText) {
+        const marker = "\n\n【都需要打标签】\n";
+        const labelStart = text.lastIndexOf(marker);
+        if (labelStart >= 0) {
+          const originalBlock = `\n\n${sampleDraft.labelText}`;
+          // Consume only the generated fields, never notes following the phone line.
+          const fields = text.slice(labelStart + marker.length)
+            .match(/^品牌：[^\n]*\n(?:地址：[^\n]*\n)?联系：[^\n]*\n电话：1[3-9]\d{9}(?!\d)/u);
+          const blockLength = text.startsWith(originalBlock, labelStart)
+            ? originalBlock.length
+            : fields ? marker.length + fields[0].length : 0;
+          if (!blockLength) {
+            setStatus(el.outputStatus, "标签结构已手工修改，请核对后手动更新；原文未变。", true);
+            return;
+          }
+          const labelEnd = labelStart + blockLength;
+          text = text.slice(0, labelStart) + (labelText ? `\n\n${labelText}` : "") + text.slice(labelEnd);
+          replaced = true;
+        }
+      }
+      el.output.value = !replaced && labelText ? `${text}\n\n${labelText}` : text;
       refreshOutputHighlights();
       sampleDraft.labelText = labelText;
       if (wasGenerated) sampleDraft.generatedText = el.output.value;
@@ -2079,6 +2131,12 @@
       return null;
     }
 
+    function isStandaloneSampleProduct(line) {
+      const product = stripLeadingSerial(cleanLine(line)).replace(/^.+系列/u, "");
+      return Object.hasOwn(batchCatalog, product)
+        || /^(?:3D)?(?:洞石|清水板|清水泥|水泥板|木纹板|中古条木|中古圆木)$/u.test(product);
+    }
+
     function extractCustomer(lines) {
       for (const [index, line] of lines.entries()) {
         const matches = cleanLine(line).matchAll(/(?:收货人|收件人|联系人|姓名)\s*[:：]?\s*([^\s,，；;]+)/gu);
@@ -2089,6 +2147,9 @@
         }
       }
 
+      // Keep original indexes while excluding known products from name-only fallbacks.
+      // Explicit contact fields above still take precedence over this product guard.
+      lines = lines.map(line => isStandaloneSampleProduct(line) ? "" : line);
       const numberSuffixedName = findNumberSuffixedCustomerName(lines);
       if (numberSuffixedName) return numberSuffixedName;
 
@@ -2283,12 +2344,14 @@
         "虫洞斑驳": "虫洞做旧",
         "灰砂": "斑驳色",
         "和清水泥": "水泥墙",
+        "中古条木": "64木纹",
+        "中古圆木": "圆木纹",
         "陨洞": "大虫洞"
       };
       const ranges = [];
       let delta = 0;
       // Match longer names first and never re-process replacement text.
-      const normalized = text.replace(/陨洞斑驳|陨洞精品|虫洞斑驳|灰砂|和清水泥|陨洞/gu, (source, offset) => {
+      const normalized = text.replace(/陨洞斑驳|陨洞精品|虫洞斑驳|灰砂|和清水泥|中古条木|中古圆木|陨洞/gu, (source, offset) => {
         const replacement = replacements[source];
         const start = offset + delta;
         ranges.push({ start, end: start + replacement.length, source, replacement });
